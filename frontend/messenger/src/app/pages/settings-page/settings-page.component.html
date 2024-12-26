@@ -1,0 +1,54 @@
+<div class="user-edit-page">
+  <div class="user-edit-container">
+    <h1 class="page-title">Редактирование профиля {{login}}</h1>
+    <div class="file-upload-container">
+      <input
+        type="file"
+        (change)="onFileSelected($event)"
+        id="fileInput"
+        style="display: none;"
+      />
+      <img class="avatar" [src]="preview()" alt="">
+      <button class="attach-button" (click)="triggerFileInput()">
+        📎 Прикрепить файл
+      </button>
+    </div>
+    <form class="user-edit-form" [formGroup]="userForm" (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <label class="form-label">Имя</label>
+        <input
+          id="firstName"
+          formControlName="username"
+          type="text"
+          class="form-input"
+          placeholder="Введите имя"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Описание</label>
+        <textarea
+          id="description"
+          formControlName="description"
+          rows="4"
+          class="form-textarea"
+          placeholder="О себе"
+        ></textarea>
+      </div>
+
+      <div>
+        <input class="search-cities" formControlName="city" [formControl]="searchControl" placeholder="Введите название города" (blur)="hideDropdown()" (focus)="showDropdown = true">
+        @if (filteredCities) {
+          <ul class="list-cities">
+            @for (city of filteredCities; track city.id) {
+              <li class="city" (click)="selectCity(city.city)">{{city.city}}</li>
+            }
+          </ul>
+        }
+      </div>
+
+      <!-- Кнопка -->
+      <button class="form-button" type="submit" [disabled]="userForm.invalid">Сохранить</button>
+    </form>
+  </div>
+</div>
