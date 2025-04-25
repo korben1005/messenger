@@ -1,0 +1,139 @@
+<div class="sidebar" (keyup.escape)="onEscape()" tabindex="0">
+  <nav class="list-chats">
+    <a class="to-profile" [routerLink]="['']">
+      <i class="fa-solid fa-chevron-left"></i>
+    </a>
+    <ul class="chats">
+      @for (chat of chats; track chat.conversationId) {
+        <div class="chat-item" (click)="selectChat(chat.conversationId)" [class.selected]="chat.conversationId === selectedChatId">
+          @if(chat.avatarUrl) {
+            <img class="chat-avatar" [src]="[chat.avatarUrl | imgUrl]" alt="">
+          } @else {
+            <img class="chat-avatar" src="/additions/user-solid.svg" alt="">
+          }
+          <div class="chat-info">
+            <span class="chat-name">{{chat.username}}</span>
+            <span class="chat-time">{{chat.lastMessageTime | date: 'yyyy-MM-dd HH:mm'}}</span>
+          </div>
+          <button class="delete-chat" (click)="deleteChat(chat.conversationId)">
+            <img src="/additions/trash-solid.svg" alt="">
+          </button>
+        </div>
+      }
+    </ul>
+  </nav>
+</div>
+<div class="messages" (keyup.escape)="onEscape()" tabindex="0">
+  @if(selectedChatId) {
+    @if(messages.length > 0) {
+      <div class="chat-container" #messagesContainer>
+      @for (item of messages; track item.messageId) {
+          @if (item.senderId === profileService.me()!.id) {
+            <div class="cont-message">
+              @if(profileService.me()!.avatarUrl) {
+                <img class="avatar" [src]="[profileService.me()!.avatarUrl | imgUrl]" alt="">
+              } @else {
+                <img class="avatar" src="/additions/user-solid.svg" alt="">
+              }
+              <div class="message user">
+              @if (item.content) {
+                <span>{{item.content}}</span>
+              } @else if (item.file.fileUrl) {
+                  @if (isImageFile(item.file.fileExpansion)) {
+                      <a [href]="[item.file.fileUrl | fileUrl]">
+                        <img [src]="[item.file.fileUrl | fileUrl]" alt="">
+                      </a>
+                  } @else if (isAudioFile(item.file.fileExpansion)) {
+                    <audio controls>
+                      <source [src]="[item.file.fileUrl | fileUrl]"/>
+                    </audio>
+                  }
+                   @else {
+                      <a class="file_download" [href]="[item.file.fileUrl | fileUrl]">
+                        <img src="/additions/file-solid.svg" alt="">
+                        <span>{{item.file.fileName}}</span>
+                      </a>
+                  }
+              }
+              </div>
+              <span>{{item.sentAt | date: 'yyyy-MM-dd HH:mm'}}</span>
+            </div>
+          } @else {
+            <div class="cont-message">
+              @if(avatarUrl) {
+                <img class="avatar" [src]="[avatarUrl | imgUrl]" alt="">
+              } @else {
+                <img class="avatar" src="/additions/user-solid.svg" alt="">
+              }
+              <div class="message other-user">
+                @if (item.content) {
+                  <span>{{item.content}}</span>
+                } @else if (item.file.fileUrl) {
+                    @if (isImageFile(item.file.fileExpansion)) {
+                        <a [href]="[item.file.fileUrl | fileUrl]">
+                          <img [src]="[item.file.fileUrl | fileUrl]" alt="">
+                        </a>
+                    } @else if (isAudioFile(item.file.fileExpansion)) {
+                      <audio controls>
+                        <source [src]="[item.file.fileUrl | fileUrl]"/>
+                      </audio>
+                    }
+                     @else {
+                        <a class="file_download" [href]="[item.file.fileUrl | fileUrl]">
+                          <img src="/additions/file-solid.svg" alt="">
+                          <span>{{item.file.fileName}}</span>
+                        </a>
+                    }
+                }
+                </div>
+              <span>{{item.sentAt | date: 'yyyy-MM-dd HH:mm'}}</span>
+            </div>
+          }
+        }
+      </div>
+    } @else {
+      <span>Сообщений нет</span>
+    }
+    <div class="message-input-container">
+      <input
+        type="text"
+        class="message-input"
+        placeholder="Введите сообщение..."
+        [(ngModel)] = "newMessage"
+        (keyup.enter)="sendMessage()"
+      />
+      <button
+      class="send-button"
+      (click)="newMessage.trim() ? sendMessage() : sendFiles()"
+      [disabled]="!newMessage.trim() && !selectedFiles.length">
+      Отправить
+    </button>
+    </div>
+    <!-- Поле для выбора файлов -->
+  <div class="file-upload-container">
+    <input
+      type="file"
+      (change)="onFileSelected($event)"
+      id="fileInput"
+      multiple
+      style="display: none;"
+    />
+    <button class="attach-button" (click)="triggerFileInput()">
+      📎 Прикрепить файл
+    </button>
+  </div>
+
+  @if (selectedFiles.length > 0) {
+    <div class="selected-files">
+      @for (file of selectedFiles; track $index) {
+        <div class="file-preview">
+          {{ file.name }} ({{ file.size | fileSize }})
+          <button (click)="removeFile(file)">❌</button>
+        </div>
+      }
+    </div>
+  }
+  } @else {
+    <span>Выберите чат</span>
+  }
+</div>

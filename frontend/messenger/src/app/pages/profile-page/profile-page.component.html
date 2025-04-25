@@ -1,0 +1,24 @@
+  <div class="page-container">
+  <div class="profile-cont">
+    @if(profile$ | async; as profile) {
+      @if(profile.avatarUrl) {
+        <img class="avatar" [src]="[profile.avatarUrl | imgUrl]" alt="">
+      } @else {
+        <img class="avatar" src="/additions/user-solid.svg" alt="">
+      }
+      <div class="user">
+        <h1 class="username">{{profile.username}}</h1>
+        <span class="description">{{profile.description}}</span>
+        <span class="city">Город: {{profile.city}}</span>
+      </div>
+      @if (route.snapshot.params['id'] === 'me') {
+        <button class="settings-btn" (click)="toSettings()">Редактировать</button>
+      }
+    }
+  </div>
+  @if (route.snapshot.params['id'] !== 'me') {
+    <div class="btns-cont">
+      <button class="to-message" (click)="toMessage()">Написать</button>
+    </div>
+  }
+</div>
