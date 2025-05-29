@@ -21,7 +21,7 @@ export class ProfilePageComponent {
   isCurrentUser = false;
   router = inject(Router)
   chatService = inject(ChatsService)
-  otherUserId!: string
+  otherUserId: string = ''
 
   me$ = toObservable(this.profileService.me)
 
@@ -65,6 +65,7 @@ export class ProfilePageComponent {
     } else if (routeId === 'me') {
       this.isCurrentUser = true;
     }
+    this.chatService.authenticate()
     // Здесь можно вызвать обработку WebSocket-сообщений
   this.chatService.onMessage().subscribe(message => {
     if (message.type === 'newChat') {

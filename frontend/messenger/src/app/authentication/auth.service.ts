@@ -15,7 +15,7 @@ export class AuthService {
   userId: number | null = null
   token: string | null = null
   refresh_token: string | null = null
-  bazeApiUrl = 'http://localhost:3000/'
+  bazeApiUrl = 'https://localhost:3000/'
   router = inject(Router)
 
   get isAuth() {

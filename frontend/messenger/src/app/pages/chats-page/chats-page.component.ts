@@ -1,4 +1,4 @@
-import { Component, inject, ElementRef, ViewChild } from '@angular/core';
+import { Component, inject, ElementRef, ViewChild, ViewChildren, AfterViewInit, QueryList, ChangeDetectorRef } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ChatsService } from '../../data/services/chats.service';
 import { Message } from '../../data/interfaces/message';
@@ -6,20 +6,21 @@ import { Chat } from '../../data/interfaces/chat';
 import { ImgUrlPipe } from '../../pipes/img-url.pipe';
 import { AuthService } from '../../authentication/auth.service';
 import { ProfileService } from '../../data/services/profile.service';
-import { catchError } from 'rxjs';
+import { catchError, of } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { FileSizePipe } from '../../pipes/file-size.pipe';
 import { FileUrlPipe } from '../../pipes/file-url.pipe';
+import { FileSelectionPageComponent } from '../file-selection-page/file-selection-page.component';
 
 @Component({
   selector: 'app-chats-page',
   standalone: true,
-  imports: [RouterLink, ImgUrlPipe, FormsModule, DatePipe, FileSizePipe, FileUrlPipe],
+  imports: [RouterLink, ImgUrlPipe, FormsModule, DatePipe, FileSizePipe, FileUrlPipe, FileSelectionPageComponent],
   templateUrl: './chats-page.component.html',
   styleUrl: './chats-page.component.scss'
 })
-export class ChatsPageComponent {
+export class ChatsPageComponent implements AfterViewInit {
   selectedChatId: number | null = null;
   chatService = inject(ChatsService)
   chats: Chat[] = [];
@@ -30,7 +31,13 @@ export class ChatsPageComponent {
   profileService = inject(ProfileService)
   avatarUrl: string = ''
   selectedFiles: File[] = [];
-  @ViewChild('messagesContainer') messagesContainer!: ElementRef;
+  uploadProgress: number = 0;
+  videoMessageIndices: number[] = [];
+  audioMessageIndices: number[] = [];
+  cdr = inject(ChangeDetectorRef);
+  @ViewChildren('videoPlayer') videoElements: QueryList<ElementRef<HTMLVideoElement>> | undefined;
+  @ViewChild('messagesContainer') messagesContainer: ElementRef<HTMLDivElement> | undefined;
+  @ViewChildren('audioPlayer') audioElements: QueryList<ElementRef<HTMLAudioElement>> | undefined;
 
 
   ngOnInit() {
@@ -41,8 +48,6 @@ export class ChatsPageComponent {
       if(this.profileService.conversationId() !== 0){
         this.selectChat(this.profileService.conversationId())
         this.profileService.conversationId.set(0)
-        console.log(this.profileService.conversationId());
-
       }
       this.profileService.getMe().subscribe()
     })
@@ -89,12 +94,21 @@ export class ChatsPageComponent {
     }
   }
 
-  // Выбор чата для отображения сообщений
-  selectChat(conversationId: number) {
-    this.selectedChatId = conversationId;
-    this.avatarUrl = this.chats.find(c => c.conversationId === this.selectedChatId)!.avatarUrl
+  scrollToBottom() {
+    console.log(this.messagesContainer)
+      if (this.messagesContainer) {
+        this.messagesContainer.nativeElement.scrollTop = this.messagesContainer.nativeElement.scrollHeight;
+      }
+    }
 
-    // Загрузка сообщений для выбранного чата
+  selectChat(conversationId: number) {
+    if(this.selectedChatId != conversationId) {
+      this.selectedChatId = conversationId;
+    this.avatarUrl = this.chats.find(c => c.conversationId === this.selectedChatId)!.avatarUrl;
+
+    if(!this.selectedChatId) {
+
+    }
     this.chatService.getMessages(conversationId).pipe(
       catchError(error => {
         if (error.status === 404) {
@@ -102,14 +116,203 @@ export class ChatsPageComponent {
         } else {
           console.error('Произошла ошибка:', error);
         }
-        return []; // Возвращаем пустой массив, чтобы продолжить выполнение
+        return of([]);
       })
     ).subscribe((data) => {
-      this.messages = data;
+      console.log(data)
+      this.messages = data.map((msg: Message) => ({
+          ...msg,
+          file: { ...msg.file, progress: msg.file.progress || 0 }
+        }
+      ));
+      this.messages.forEach(item => {
+        if(this.isAudioFile(item.file.fileExpansion)) {
+          new Promise ((resolve, reject) => {
+            const audio = new Audio();
+            audio.src = `https://localhost:3000/uploads/${item.file.fileUrl}`; // Указываем URL аудиофайла
+            audio.onloadedmetadata = () => {
+                if (!isNaN(audio.duration) && audio.duration !== Infinity) {
+                    item.file.duration = audio.duration // Длительность в секундах
+                } else {
+                    reject(new Error('Не удалось определить длительность аудио'));
+                }
+                audio.remove(); // Очищаем объект после использования
+            };
+          })
+        }
+      })
+      this.scrollToBottom();
+    });
+    }
+  }
+
+  updateVideoProgress() {
+    if (!this.videoElements || !this.messages) {
+      console.warn('videoElements or messages is undefined');
+      return;
+    }
+    const videoArray = this.videoElements.toArray();
+    if (videoArray.length === 0) {
+      console.warn('No video elements found in DOM');
+      return;
+    }
+    this.messages.forEach((msg, idx) => {
+      if (msg.file.fileUrl && this.isVideoFile(msg.file.fileExpansion)) {
+        this.videoMessageIndices.push(idx);
+      }
+    });
+    // Перебираем videoArray и сопоставляем с индексами сообщений
+    videoArray.forEach((videoRef, videoIndex) => {
+      // Проверяем, есть ли сообщение для данного videoIndex
+      if (videoIndex >= this.videoMessageIndices.length) {
+        console.warn(`No matching message for video element ${videoIndex}`);
+        return;
+      }
+
+      const msgIndex = this.videoMessageIndices[videoIndex];
+      const msg = this.messages[msgIndex];
+
+      if (msg.file.duration && !isNaN(msg.file.duration) && msg.file.duration !== Infinity) {
+        const video = videoRef.nativeElement;
+        video.addEventListener('timeupdate', () => {
+          msg.file.progress = video.currentTime;
+          if(video.currentTime >= msg.file.duration){
+            video.dispatchEvent(new Event('ended'));
+          }
+        }, { once: false });
+      video.addEventListener('error', (err) => {
+        console.error(`Video ${msgIndex} error:`, err);
+      }, { once: false });
+      } else {
+        console.log(`Invalid duration for message ${msgIndex}:`, msg.file.duration);
+      }
     });
   }
 
-  handleNewMessage(message: any) {
+  seekTo(message: Message, event: Event) {
+    const input = event.target as HTMLInputElement;
+    const msgIndex = this.messages.indexOf(message); // Находим индекс сообщения
+    console.log('Message index:', msgIndex);
+    if (msgIndex === -1) {
+      console.warn('Message not found in this.messages');
+      return;
+    }
+    // Находим позицию сообщения среди видеосообщений
+    const videoIndex = this.videoMessageIndices.indexOf(msgIndex);
+    console.log('Video index:', videoIndex);
+    if (videoIndex === -1) {
+      console.warn(`No video element found for message ${msgIndex}`);
+      return;
+    }
+    const video = this.videoElements?.toArray()[videoIndex]?.nativeElement;
+    console.log('Video element:', video);
+    if (video && message.file.duration && Number.isFinite(message.file.duration)) {
+      const newTime = parseFloat(input.value);
+      video.currentTime = newTime;
+      message.file.progress = newTime;
+    } else {
+      console.warn(`No video element or invalid duration for message ${msgIndex}`);
+    }
+  }
+
+  toggleVideo(message: Message, event: Event) {
+  const msgIndex = this.messages.indexOf(message);
+  if (msgIndex === -1) {
+    console.warn('Message not found in this.messages');
+    return;
+  }
+  const videoIndex = this.videoMessageIndices.indexOf(msgIndex);
+  if (videoIndex === -1) {
+    console.warn(`No video element found for message ${msgIndex}`);
+    return;
+  }
+  const video = this.videoElements?.toArray()[videoIndex]?.nativeElement;
+  if (video) {
+    if (video.paused) {
+      video.play()
+    } else {
+      video.pause();
+    }
+  } else {
+    console.warn(`No video element for message ${msgIndex}`);
+  }
+}
+
+  formatDuration(duration: number): string {
+    if (!duration || duration < 0 || !isFinite(duration)) return '00:00';
+    const minutes = Math.floor(duration / 60);
+    const seconds = Math.floor(duration % 60);
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+  toggleAudio(audio: HTMLAudioElement) {
+      if (audio.paused) {
+        audio.play();
+      } else {
+        audio.pause();
+      }
+    }
+
+  seekAudio(message: Message, event: Event) {
+    const input = event.target as HTMLInputElement;
+    const msgIndex = this.messages.indexOf(message);
+    if (msgIndex === -1) {
+      console.warn('Message not found in this.messages');
+      return;
+    }
+    // Находим позицию сообщения среди видеосообщений
+    const audioIndex = this.audioMessageIndices.indexOf(msgIndex);
+    console.log('audio index:', audioIndex);
+    if (audioIndex === -1) {
+      console.warn(`No video element found for message ${msgIndex}`);
+      return;
+    }
+    const audio = this.audioElements?.toArray()[audioIndex]?.nativeElement;
+    console.log('Video element:', audio);
+    if (audio && message.file.duration && Number.isFinite(message.file.duration)) {
+      const newTime = parseFloat(input.value);
+      audio.currentTime = newTime;
+      message.file.progress = newTime;
+    } else {
+      console.warn(`No video element or invalid duration for message ${msgIndex}`);
+    }
+  }
+
+  updateAudioProgress() {
+   const audioArray = this.audioElements!.toArray();
+   this.messages.forEach((msg, idx) => {
+      if (msg.file.fileUrl && this.isAudioFile(msg.file.fileExpansion)) {
+        this.audioMessageIndices.push(idx);
+      }
+    });
+    audioArray.forEach((audioRef, audioIndex) => {
+      // Проверяем, есть ли сообщение для данного videoIndex
+      if (audioIndex >= this.audioMessageIndices.length) {
+        console.warn(`No matching message for video element ${audioIndex}`);
+        return;
+      }
+
+      const msgIndex = this.audioMessageIndices[audioIndex];
+      const msg = this.messages[msgIndex];
+
+      if (msg.file.duration && !isNaN(msg.file.duration) && msg.file.duration !== Infinity) {
+        const audio = audioRef.nativeElement;
+        audio.addEventListener('timeupdate', () => {
+          msg.file.progress = audio.currentTime;
+          if(audio.currentTime >= msg.file.duration){
+            audio.dispatchEvent(new Event('ended'));
+          }
+        }, { once: false });
+      audio.addEventListener('error', (err) => {
+        console.error(`Video ${msgIndex} error:`, err);
+      }, { once: false });
+      } else {
+        console.log(`Invalid duration for message ${msgIndex}:`, msg.file.duration);
+      }
+    });
+  }
+
+  handleNewMessage(message: Message) {
     const chat = this.chats.find(c => c.conversationId === message.conversationId);
     if (chat) {
       chat.lastMessage = message.content;
@@ -118,6 +321,7 @@ export class ChatsPageComponent {
 
     if (this.selectedChatId === message.conversationId) {
       this.messages.push(message);
+      console.log(message)
     }
     this.chats = this.filterAndSortChats(this.chats)
   }
@@ -143,80 +347,162 @@ export class ChatsPageComponent {
 
   onEscape() {
     this.selectedChatId = null
+    this.chatService.openFileWindow.set(false)
   }
 
-  onFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (input?.files) {
-      this.selectedFiles = Array.from(input.files); // Сохраняем выбранные файлы
-      console.log('Выбраны файлы:', this.selectedFiles);
-    }
-  }
+  // onFileSelected(event: Event) {
+  //   const input = event.target as HTMLInputElement;
+  //   if (input?.files) {
+  //     this.selectedFiles = Array.from(input.files); // Сохраняем выбранные файлы
+  //     console.log('Выбраны файлы:', this.selectedFiles);
+  //   }
+  // }
 
-  triggerFileInput() {
-    const fileInput = document.getElementById('fileInput') as HTMLInputElement;
-    fileInput.click();
+  // triggerFileInput() {
+  //   const fileInput = document.getElementById('fileInput') as HTMLInputElement;
+  //   fileInput.click();
+  // }
+
+  checkFileArrTypes(item: string | File): item is string {
+    return typeof item === 'string';
   }
 
   sendFiles() {
-    if (this.selectedFiles.length === 0) {
-      console.error('Нет файлов для загрузки');
+    if (this.chatService.fileArr().length === 0) {
+      alert('Нет файлов для отправки');
       return;
     }
 
-    const userId = this.profileService.me()!.id;
+    const filesToProcess = this.chatService.fileArr();
+    console.log(filesToProcess)
 
-    this.selectedFiles.forEach((file) => {
-      const reader = new FileReader();
-
-      // Начинаем чтение файла
-      reader.readAsDataURL(file);
-
-      reader.onload = () => {
-        const base64FileContent = reader.result?.toString().split(',')[1]; // Преобразование файла в Base64
-
-        const fileData = {
+    filesToProcess.forEach(item => {
+      if (this.checkFileArrTypes(item)) {
+        this.chatService.sendMessage({
           conversationId: this.selectedChatId,
-          senderId: userId,
-          fileName: file.name,
-          fileContent: base64FileContent
+          senderId: this.profileService.me()!.id,
+          fileUrl: item
+        })
+      }
+        else if(item instanceof File ) {
+          const formData = new FormData();
+        const uploadNextFile = (fileIndex: number) => {
+          if (fileIndex >= filesToProcess.length) {
+            this.uploadProgress = 0;
+            alert('Все файлы успешно загружены!');
+            return;
+          }
+
+          const file = filesToProcess[fileIndex] as File;
+          const chunkSize = 1 * 1024 * 1024; // 1MB
+          const totalChunks = Math.ceil(file.size / chunkSize);
+          const fileName = `${Date.now()}-${file.name}`;
+          console.log('Uploading file:', { fileName, fileSize: file.size, totalChunks });
+
+          this.chatService.checkChunks(this.selectedChatId!, fileName).subscribe({
+            next: (response) => {
+              const uploadedChunks = response.uploadedChunks;
+              let chunkIndex = 0;
+
+              const sendNextChunk = () => {
+                if (chunkIndex >= totalChunks) {
+                  this.chatService.completeUpload(this.selectedChatId!, fileName, totalChunks).subscribe({
+                    next: () => {
+                      uploadNextFile(fileIndex + 1);
+                    },
+                    error: (err) => {
+                      console.error('Ошибка завершения загрузки:', err);
+                      this.uploadProgress = 0;
+                      alert('Ошибка завершения загрузки: ' + (err.error?.message || 'Неизвестная ошибка'));
+                    }
+                  });
+                  return;
+                }
+
+                if (uploadedChunks.includes(chunkIndex)) {
+                  chunkIndex++;
+                  this.uploadProgress = Math.round((100 * (chunkIndex + 1)) / totalChunks);
+                  sendNextChunk();
+                  return;
+                }
+
+                const start = chunkIndex * chunkSize;
+                const end = Math.min(start + chunkSize, file.size);
+                const chunk = file.slice(start, end);
+                console.log('Sending chunk:', { chunkIndex, chunkSize: end - start });
+
+                if (!chunk || chunk.size === 0) {
+                  console.error('Chunk is empty or invalid:', { chunkIndex, chunkSize: end - start });
+                  return;
+                }
+
+                formData.set('chunk', chunk, `${fileName}_chunk_${chunkIndex}`);
+                formData.set('fileName', fileName);
+                formData.set('chunkIndex', chunkIndex.toString());
+                formData.set('totalChunks', totalChunks.toString());
+
+                this.chatService.uploadChunk(this.selectedChatId!, formData).subscribe({
+                  next: (res) => {
+                    this.uploadProgress = Math.round((100 * (chunkIndex + 1)) / totalChunks);
+                    chunkIndex++;
+                    sendNextChunk();
+                    console.log(res);
+
+                  },
+                  error: (err) => {
+                    console.error('Ошибка загрузки фрагмента:', err);
+                    this.uploadProgress = 0;
+                    alert('Ошибка загрузки фрагмента: ' + (err.error?.message || 'Неизвестная ошибка'));
+                  }
+                });
+              };
+
+              sendNextChunk();
+            },
+            error: (err) => {
+              console.error('Ошибка проверки фрагментов:', err);
+              alert('Ошибка проверки фрагментов: ' + (err.error?.message || 'Неизвестная ошибка'));
+            }
+          });
         };
-
-        // Отправляем файл
-        this.chatService.sendFile(fileData);
-      };
-
-      reader.onerror = () => {
-        console.error('Ошибка чтения файла');
-      };
-    });
-
-    // Очистить список выбранных файлов после загрузки
-    this.selectedFiles = [];
+        uploadNextFile(0);
+      }
+    })
+    this.chatService.fileArr.set([])
   }
 
-  removeFile(file: File) {
-    this.selectedFiles = this.selectedFiles.filter((f) => f !== file);
+  removeFile(file: string | File) {
+   this.chatService.fileArr.update(files => files.filter(f => f !== file));
   }
 
-  isImageFile(filePath: string) {
+  isImageFile(filePath: string): boolean {
     const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
-    const fileExtension = filePath.toLowerCase()
+    const fileExtension = filePath
     return validExtensions.includes(`.${fileExtension}`)
   }
 
   isAudioFile(filePath: string): boolean {
     const validExtensions = ['.mp3', '.wav', '.ogg', '.flac', '.aac', '.m4a', '.wma'];
-    const fileExtension = filePath.toLowerCase().split('.').pop(); // Извлекаем расширение файла
-    return fileExtension ? validExtensions.includes(`.${fileExtension}`) : false;
+    const fileExtension = filePath
+    return validExtensions.includes(`.${fileExtension}`)
+  }
+
+  isVideoFile(filePath: string): boolean {
+    const validExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.flv', '.wmv'];
+    const fileExtension = filePath
+    return validExtensions.includes(`.${fileExtension}`)
+  }
+
+  openFileList(){
+    this.chatService.openFileWindow.set(true)
   }
 
   ngAfterViewInit() {
-    if (this.messagesContainer && this.messagesContainer.nativeElement) {
-      const container = this.messagesContainer.nativeElement;
-      container.scrollTop = container.scrollHeight;
-    } else {
-      console.warn('messagesContainer не инициализирован.');
-    }
+    this.videoElements?.changes.subscribe(() => {
+      this.updateVideoProgress();
+    });
+    this.audioElements?.changes.subscribe(() => {
+      this.updateAudioProgress()
+    })
   }
 }

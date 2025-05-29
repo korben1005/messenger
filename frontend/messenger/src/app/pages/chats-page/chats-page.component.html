@@ -41,18 +41,46 @@
               } @else if (item.file.fileUrl) {
                   @if (isImageFile(item.file.fileExpansion)) {
                       <a [href]="[item.file.fileUrl | fileUrl]">
-                        <img [src]="[item.file.fileUrl | fileUrl]" alt="">
+                        <img [src]="[item.file.fileUrl | fileUrl]" alt="" loading="lazy">
                       </a>
                   } @else if (isAudioFile(item.file.fileExpansion)) {
-                    <audio controls>
-                      <source [src]="[item.file.fileUrl | fileUrl]"/>
-                    </audio>
+                    <span>{{item.file.fileName.slice(14)}}</span>
+                      <div class="custom-audio-player">
+                        <audio #audioPlayer preload="metadata">
+                          <source [src]="item.file.fileUrl | fileUrl">
+                        </audio>
+                        <button (click)="toggleAudio(audioPlayer)">Toggle Audio</button>
+                        <input
+                        type="range"
+                        [min]="0"
+                        [max]="item.file.duration"
+                        class="audio-progress"
+                        [value]="item.file.progress || 0"
+                        (input)="seekAudio(item, $event)" />
+                        <span>{{ formatDuration(item.file.progress || 0) }} / {{ formatDuration(item.file.duration) }}</span>
+                    </div>
+                  } @else if (isVideoFile(item.file.fileExpansion)) {
+                      <video #videoPlayer preload="metadata" (click)="toggleVideo(item, $event)">
+                        <source [src]="item.file.fileUrl | fileUrl" type="video/mp4">
+                      </video>
+                      <div class="video-controls">
+                        <button (click)="toggleVideo(item, $event)">Toggle Video</button>
+                        <input
+                          class="video-input"
+                          type="range"
+                          [min]="0"
+                          [max]="item.file.duration"
+                          [value]="item.file.progress || 0"
+                          (input)="seekTo(item, $event)"
+                        />
+                        <span>{{ formatDuration(item.file.progress || 0) }} / {{ formatDuration(item.file.duration) }}</span>
+                      </div>
                   }
                    @else {
-                      <a class="file_download" [href]="[item.file.fileUrl | fileUrl]">
-                        <img src="/additions/file-solid.svg" alt="">
-                        <span>{{item.file.fileName}}</span>
-                      </a>
+                    <a class="file_download" [href]="[item.file.fileUrl | fileUrl]">
+                      <img src="/additions/file-solid.svg" alt="">
+                      <span>{{item.file.fileName}}</span>
+                    </a>
                   }
               }
               </div>
@@ -71,12 +99,24 @@
                 } @else if (item.file.fileUrl) {
                     @if (isImageFile(item.file.fileExpansion)) {
                         <a [href]="[item.file.fileUrl | fileUrl]">
-                          <img [src]="[item.file.fileUrl | fileUrl]" alt="">
+                          <img [src]="[item.file.fileUrl | fileUrl]" alt="" loading="lazy">
                         </a>
                     } @else if (isAudioFile(item.file.fileExpansion)) {
-                      <audio controls>
-                        <source [src]="[item.file.fileUrl | fileUrl]"/>
-                      </audio>
+                      <span>{{item.file.fileName.slice(14)}}</span>
+                      <div class="custom-audio-player">
+                        <audio #audioPlayer preload="metadata">
+                          <source [src]="item.file.fileUrl | fileUrl">
+                        </audio>
+                        <button (click)="toggleAudio(audioPlayer)">Toggle Audio</button>
+                        <input
+                        type="range"
+                        [min]="0"
+                        [max]="item.file.duration"
+                        class="audio-progress"
+                        [value]="item.file.progress || 0"
+                        (input)="seekAudio(item, $event)" />
+                        <span>{{ formatDuration(item.file.progress || 0) }} / {{ formatDuration(item.file.duration) }}</span>
+                    </div>
                     }
                      @else {
                         <a class="file_download" [href]="[item.file.fileUrl | fileUrl]">
@@ -105,29 +145,24 @@
       <button
       class="send-button"
       (click)="newMessage.trim() ? sendMessage() : sendFiles()"
-      [disabled]="!newMessage.trim() && !selectedFiles.length">
+      [disabled]="!newMessage.trim() && !chatService.fileArr().length">
       Отправить
-    </button>
+      </button>
     </div>
     <!-- Поле для выбора файлов -->
   <div class="file-upload-container">
-    <input
-      type="file"
-      (change)="onFileSelected($event)"
-      id="fileInput"
-      multiple
-      style="display: none;"
-    />
-    <button class="attach-button" (click)="triggerFileInput()">
-      📎 Прикрепить файл
-    </button>
+    <button (click)="openFileList()">открыть окно</button>
+    @if (chatService.openFileWindow()) {
+      <div class="overlay"></div>
+      <app-file-selection-page></app-file-selection-page>
+    }
   </div>
 
-  @if (selectedFiles.length > 0) {
+  @if (chatService.fileArr().length > 0) {
     <div class="selected-files">
-      @for (file of selectedFiles; track $index) {
+      @for (file of chatService.fileArr(); track $index) {
         <div class="file-preview">
-          {{ file.name }} ({{ file.size | fileSize }})
+          {{ checkFileArrTypes(file) ? file.substring(file.indexOf("-") + 1, file.length) : file.name }}
           <button (click)="removeFile(file)">❌</button>
         </div>
       }

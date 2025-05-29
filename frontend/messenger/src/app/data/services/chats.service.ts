@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { HttpClient } from '@angular/common/http';
 import { Chat } from '../interfaces/chat';
@@ -9,13 +9,15 @@ import { AuthService } from '../../authentication/auth.service';
   providedIn: 'root'
 })
 export class ChatsService {
-  socket$: WebSocketSubject<any> = webSocket('ws://localhost:3000');
-  apiUrl = 'http://localhost:3000/'
+  socket$: WebSocketSubject<any> = webSocket('wss://localhost:3000');
+  apiUrl = 'https://localhost:3000/'
   http = inject(HttpClient)
   authService = inject(AuthService)
   chats: Chat[] = [];
   messages: Message[] = [];
   token = this.authService.token
+  openFileWindow = signal<boolean> (false)
+  fileArr = signal<(string | File)[]> ([])
 
   startTokenRefresh() {
     const refreshInterval = 13 * 60 * 1000; // Обновление токена каждые 13 минут (до истечения 15 минут)
@@ -72,5 +74,19 @@ export class ChatsService {
   // Получение данных из WebSocket
   onMessage() {
     return this.socket$;
+  }
+
+  // Проверка уже загруженных фрагментов
+  checkChunks(conversationId: number, fileName: string){
+    return this.http.get<any>(`${this.apiUrl}chats/${conversationId}/check-chunks`, {params: { fileName }});
+  }
+
+  uploadChunk(conversationId: number, formData: FormData) {
+    return this.http.post(`${this.apiUrl}chats/${conversationId}/upload-chunk`, formData);
+  }
+
+  // Завершение загрузки
+  completeUpload(conversationId: number, fileName: string, totalChunks: number) {
+    return this.http.post(`${this.apiUrl}chats/${conversationId}/complete-upload`, {fileName, totalChunks});
   }
 }

@@ -1,4 +1,8 @@
-import { Pipe, PipeTransform } from '@angular/core';
+import { Pipe, PipeTransform, Injectable } from '@angular/core';
+
+@Injectable({
+  providedIn: 'root', // Делает пайп доступным глобально
+})
 
 @Pipe({
   name: 'fileUrl',
@@ -9,8 +13,8 @@ export class FileUrlPipe implements PipeTransform {
   transform(value: string | null): string | null{
     if(!value) return null
     const arr = value.split('/')
-    const fileName = encodeURIComponent(arr[1])
-    return `http://localhost:3000/uploads/${arr[0]}/${fileName}`;
+    const fileName = arr[1]
+    return `https://localhost:3000/uploads/${arr[0]}/${fileName}`;
   }
 
 }

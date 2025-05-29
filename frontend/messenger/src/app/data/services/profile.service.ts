@@ -8,7 +8,7 @@ import { tap } from 'rxjs';
 })
 export class ProfileService {
   http = inject(HttpClient)
-  bazeApiUrl = 'http://localhost:3000/'
+  bazeApiUrl = 'https://localhost:3000/'
   me = signal<Profile | null> (null)
   conversationId = signal<number> (0)
 
@@ -41,5 +41,9 @@ export class ProfileService {
 
   searchProfiles(username: string) {
     return this.http.patch<Profile[]>(`${this.bazeApiUrl}search-users`, {username: username})
+  }
+
+  getFiles(){
+    return this.http.get<string[]>(`${this.bazeApiUrl}files`)
   }
 }
