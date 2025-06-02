@@ -46,7 +46,7 @@ export class AuthService {
     this.cookieService.deleteAll()
     return this.http.post<Token>(`${this.bazeApiUrl}register`, fd)
     .pipe(
-      tap(val=> this.saveToken(val))
+      tap(val => this.saveToken(val))
     )
   }
 

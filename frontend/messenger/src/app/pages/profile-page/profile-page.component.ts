@@ -1,17 +1,18 @@
 import { Component, inject, signal } from '@angular/core';
-import { AsyncPipe } from '@angular/common';
+import { AsyncPipe, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { ProfileService } from '../../data/services/profile.service';
-import { catchError, switchMap } from 'rxjs';
+import { switchMap, firstValueFrom } from 'rxjs';
 import { ImgUrlPipe } from '../../pipes/img-url.pipe';
-import { firstValueFrom } from 'rxjs';
 import { ChatsService } from '../../data/services/chats.service';
+import { Post } from '../../data/interfaces/post';
+import { CreatePostComponent } from '../../common-ui/create-post/create-post.component';
 
 @Component({
   selector: 'app-profile-page',
   standalone: true,
-  imports: [AsyncPipe, ImgUrlPipe],
+  imports: [AsyncPipe, ImgUrlPipe, DatePipe, CreatePostComponent],
   templateUrl: './profile-page.component.html',
   styleUrl: './profile-page.component.scss'
 })
@@ -22,6 +23,10 @@ export class ProfilePageComponent {
   router = inject(Router)
   chatService = inject(ChatsService)
   otherUserId: string = ''
+  posts: Post[] = []
+  loading: boolean = false
+  hasMore: boolean = true;
+  offset: number = 0;
 
   me$ = toObservable(this.profileService.me)
 
@@ -53,6 +58,20 @@ export class ProfilePageComponent {
     this.router.navigate(['/chats'])
   }
 
+  openCreatePostWindow() {
+    this.profileService.openCreatePostW.set(true)
+  }
+
+  loadPosts() {
+    if (!this.hasMore || this.loading) return;
+    this.loading = true;
+    // this.route.params.subscribe(params => {
+    //   const id = params['id']
+    //   this.profileService.getPosts(this.offset, id)
+    // })
+    this.profileService.getPosts(this.offset, this.route.snapshot.params['id'])
+  }
+
   async ngOnInit() {
     const me = await firstValueFrom(this.profileService.getMe());
 
@@ -61,9 +80,6 @@ export class ProfilePageComponent {
     // Переадресация на /profile/me, если ID совпадает
     if (String(routeId) === String(me.id)) {
       this.router.navigate(['/profile/me']);
-      this.isCurrentUser = true;
-    } else if (routeId === 'me') {
-      this.isCurrentUser = true;
     }
     this.chatService.authenticate()
     // Здесь можно вызвать обработку WebSocket-сообщений

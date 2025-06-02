@@ -1,0 +1,27 @@
+<!-- <form class="create-post-window" [formGroup]="post" (ngSubmit)="onSubmit()">
+  <button (click)="closeFileList()">закрыть окно</button>
+  <textarea
+    formControlName="postContent"
+    placeholder="Напишите текст поста..."
+    class="post-textarea"
+    rows="5"
+  ></textarea>
+  <input
+      type="file"
+      (change)="onFileSelected($event)"
+      id="fileInput"
+      multiple
+      style="display: none;"
+  />
+  <button class="attach-button" (click)="triggerFileInput()">
+    📎 Прикрепить файл
+  </button>
+  <div class="file-list">
+    @for (item of fileArr; track $index) {
+      <div class="file-item">
+        <input type="checkbox" [id]="'file-' + $index" [value]="item" (change)="onFileSelect($event, item)">
+        <label formControlName="postFiles" [for]="'file-' + $index">{{ item.split('/').pop()?.slice(14) }}</label>
+      </div>
+    }
+  </div>
+</form> -->

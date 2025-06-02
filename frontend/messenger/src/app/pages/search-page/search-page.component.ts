@@ -29,8 +29,6 @@ export class SearchPageComponent {
       if (query !== null) {
         this.profileService.searchProfiles(query).subscribe(data => {
           this.profiles = data;
-          console.log(data);
-
         });
       }
     });

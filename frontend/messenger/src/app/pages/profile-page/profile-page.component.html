@@ -1,24 +1,43 @@
   <div class="page-container">
-  <div class="profile-cont">
-    @if(profile$ | async; as profile) {
-      @if(profile.avatarUrl) {
-        <img class="avatar" [src]="[profile.avatarUrl | imgUrl]" alt="">
-      } @else {
-        <img class="avatar" src="/additions/user-solid.svg" alt="">
+    <div class="profile-cont">
+      @if(profile$ | async; as profile) {
+        @if(profile.avatarUrl) {
+          <img class="avatar" [src]="[profile.avatarUrl | imgUrl]" alt="">
+        } @else {
+          <img class="avatar" src="/additions/user-solid.svg" alt="">
+        }
+        <div class="user">
+          <h1 class="username">{{profile.username}}</h1>
+          <span class="description">{{profile.description}}</span>
+          <span class="city">Город: {{profile.city}}</span>
+        </div>
+        @if (route.snapshot.params['id'] === 'me') {
+          <button class="settings-btn" (click)="toSettings()">Редактировать</button>
+        }
       }
-      <div class="user">
-        <h1 class="username">{{profile.username}}</h1>
-        <span class="description">{{profile.description}}</span>
-        <span class="city">Город: {{profile.city}}</span>
-      </div>
-      @if (route.snapshot.params['id'] === 'me') {
-        <button class="settings-btn" (click)="toSettings()">Редактировать</button>
-      }
-    }
-  </div>
-  @if (route.snapshot.params['id'] !== 'me') {
-    <div class="btns-cont">
-      <button class="to-message" (click)="toMessage()">Написать</button>
     </div>
+    @if (route.snapshot.params['id'] !== 'me') {
+      <div class="btns-cont">
+        <button class="to-message" (click)="toMessage()">Написать</button>
+      </div>
+    }
+</div>
+<div class="posts-container">
+  @for (post of posts; track post.id) {
+    <div class="post">
+        <p>{{ post.content }}</p>
+        <small>{{ post.created_at | date:'yyyy-MM-dd HH:mm' }}</small>
+    </div>
+  }
+  @if (loading) {
+    <div class="loading">Загрузка...</div>
+  } @else if (!hasMore && posts.length > 0) {
+    <div class="no-more-posts">Больше постов нет</div>
+  }
+  @if (route.snapshot.params['id'] === 'me') {
+    <button class="create-post" (click)="openCreatePostWindow()"></button>
+    @if(this.profileService.openCreatePostW()) {
+      <app-create-post></app-create-post>
+    }
   }
 </div>

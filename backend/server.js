@@ -78,6 +78,37 @@ const generateRefreshToken = (user, secret) => {
     return jwt.sign({ id: user.id, username: user.login }, secret, { expiresIn: '7d' });
 };
 
+// Функция для извлечения длительности с помощью MediaInfo
+        const getDuration = (fileUrl) => {
+            return new Promise((resolve) => {
+                if (!fileUrl) {
+                    resolve(null);
+                    return;
+                }
+                const filePath = path.join(uploadsFolder, fileUrl.replace('/uploads/', ''));
+                if (!fs.existsSync(filePath)) {
+                    console.log('File not found on disk:', filePath);
+                    resolve(null);
+                    return;
+                }
+
+                // Вызываем MediaInfo через командную строку
+                const mediaInfoPath = path.join(__dirname, 'MediaInfo_CLI_25.04_Windows_x64', 'MediaInfo.exe');
+                const command = `"${mediaInfoPath}" --Inform="General;%Duration%" "${filePath}"`;
+                execPromise(command)
+                    .then(({ stdout }) => {
+                        const durationMs = parseInt(stdout.trim(), 10); // Длительность в миллисекундах
+                        const duration = durationMs ? durationMs / 1000 : null; // Переводим в секунды
+                        console.log('Extracted duration:', { filePath, duration });
+                        resolve(duration);
+                    })
+                    .catch((err) => {
+                        console.error('Ошибка извлечения метаданных для:', filePath, err);
+                        resolve(null);
+                    });
+            });
+        };
+
 // Регистрация пользователя
 app.post('/register', upload.none(), (req, res) => {
     const { login, password } = req.body;
@@ -348,13 +379,14 @@ app.get('/chats', authenticateToken, (req, res) => {
     const userId = req.userId;
 
     const query = `
-        SELECT 
+       SELECT 
             cu1.conversation_id AS conversationId,
             cu2.user_id AS otherUserId,
             au.username AS username,
             au.avatarUrl AS avatarUrl,
             msg.content AS lastMessage,
-            COALESCE(msg.sent_at, c.created_at) AS lastMessageTime
+            COALESCE(msg.sent_at, c.created_at) AS lastMessageTime,
+            COALESCE(unread.unreadCount, 0) AS unreadCount
         FROM conversation_users cu1
         JOIN conversation_users cu2 
             ON cu1.conversation_id = cu2.conversation_id AND cu2.user_id != cu1.user_id
@@ -367,6 +399,13 @@ app.get('/chats', authenticateToken, (req, res) => {
                 FROM messages 
                 WHERE conversation_id = cu1.conversation_id
             )
+        LEFT JOIN (
+            SELECT conversation_id, sender_id, COUNT(*) as unreadCount
+            FROM messages
+            WHERE is_read = 0
+            GROUP BY conversation_id, sender_id
+        ) unread
+            ON cu1.conversation_id = unread.conversation_id AND cu2.user_id = unread.sender_id
         JOIN conversations c
             ON cu1.conversation_id = c.id
         WHERE cu1.user_id = ?;
@@ -380,6 +419,7 @@ app.get('/chats', authenticateToken, (req, res) => {
         if (!rows.length) {
             return res.status(404).json({ message: 'Переписки не найдены' });
         }
+        console.log(rows)
 
         res.json(rows);
     });
@@ -458,6 +498,7 @@ app.delete('/chats/:conversationId', authenticateToken, (req, res) => {
 
 const { exec } = require('child_process');
 const util = require('util');
+const { rejects } = require('assert');
 const execPromise = util.promisify(exec);
 
 app.get('/chats/:conversationId/messages', authenticateToken, (req, res) => {
@@ -487,36 +528,6 @@ app.get('/chats/:conversationId/messages', authenticateToken, (req, res) => {
         if (!rows.length) {
             return res.status(404).json({ message: 'Сообщения не найдены' });
         }
-
-        // Функция для извлечения длительности с помощью MediaInfo
-        const getDuration = (fileUrl) => {
-            return new Promise((resolve) => {
-                if (!fileUrl) {
-                    resolve(null);
-                    return;
-                }
-                const filePath = path.join(uploadsFolder, fileUrl.replace('/uploads/', ''));
-                if (!fs.existsSync(filePath)) {
-                    console.log('File not found on disk:', filePath);
-                    resolve(null);
-                    return;
-                }
-
-                // Вызываем MediaInfo через командную строку
-                const command = `"C:\\Users\\Алексей\\Downloads\\MediaInfo_CLI_25.04_Windows_x64\\MediaInfo.exe" --Inform="General;%Duration%" "${filePath}"`;
-                execPromise(command)
-                    .then(({ stdout }) => {
-                        const durationMs = parseInt(stdout.trim(), 10); // Длительность в миллисекундах
-                        const duration = durationMs ? durationMs / 1000 : null; // Переводим в секунды
-                        console.log('Extracted duration:', { filePath, duration });
-                        resolve(duration);
-                    })
-                    .catch((err) => {
-                        console.error('Ошибка извлечения метаданных для:', filePath, err);
-                        resolve(null);
-                    });
-            });
-        };
 
         // Асинхронно извлекаем длительности для всех файлов
         const processRows = async () => {
@@ -704,21 +715,30 @@ app.post('/chats/:conversationId/complete-upload', authenticateToken, (req, res)
             if (err) {
                 return res.status(500).json({ message: 'Ошибка сохранения данных файла в базу' });
             }
+            let duration = 1
+            let response = {}
 
-            const messageId = this.lastID;
-            const response = {
-                type: 'newMessage',
-                messageId: messageId,
-                conversationId: conversationId,
-                senderId: userId,
-                content: '',
-                sentAt: new Date().toISOString(),
-                file: {
-                    fileName: fileName,
-                    fileUrl: fileUrl,
-                    fileExpansion: fileExpansion
+            const processRows = async () => {
+                if(fileUrl.endsWith('.mp4') || fileUrl.endsWith('.webm') || fileUrl.endsWith('.ogg')) {
+                    duration = await getDuration(fileUrl);
                 }
-            };
+                const messageId = this.lastID;
+                response = {
+                    type: 'newMessage',
+                    messageId: messageId,
+                    conversationId: conversationId,
+                    senderId: userId,
+                    content: '',
+                    sentAt: new Date().toISOString(),
+                    file: {
+                        fileName: fileName,
+                        fileUrl: fileUrl,
+                        fileExpansion: fileExpansion,
+                        duration: duration
+                    }
+                }
+            }
+            processRows()
 
             const usersQuery = `
                 SELECT user_id
@@ -734,12 +754,6 @@ app.post('/chats/:conversationId/complete-upload', authenticateToken, (req, res)
                         }
                     });
                 });
-            });
-
-            res.status(200).json({
-                message: 'Файл успешно загружен',
-                fileUrl: fileUrl,
-                userId: userId
             });
         });
     });
@@ -786,29 +800,43 @@ wss.on('connection', (ws) => {
     ws.send(JSON.stringify({ message: 'Добро пожаловать в чат!' }));
 
     ws.on('message', (message) => {
-        try {
-            const data = JSON.parse(message);
-            console.log(data)
-            if (data.type === 'newMessage') {
+    try {
+        const data = JSON.parse(message);
+        switch (data.type) {
+            case 'newMessage':
                 handleNewMessage(data, ws);
-            } else if (data.type === 'newChat') {
+                break;
+            case 'newChat':
                 handleNewChat(data, ws);
-            } else if (data.type === 'fileMessage') {
+                break;
+            case 'fileMessage':
                 handleFileUpload(data, ws);
-            } else if (data.type === 'authenticate' && data.token) {
-                authenticateTokenWebSocket(data.token, (error, userId) => {
-                    if (error) {
-                        console.log(error);
-                        ws.close();
-                    } else {
-                        ws.userId = userId;
-                        clients.add(ws);
-                        console.log(`Подключен пользователь с ID: ${userId}`);
-                    }
-                });
-            }
-        } catch (err) {
-            console.error('Ошибка обработки сообщения WebSocket:', err.message);
+                break;
+            case 'readingChat':
+                handleReadingChat(data, ws)
+                break;
+            case 'authenticate':
+                if (data.token) {
+                    authenticateTokenWebSocket(data.token, (error, userId) => {
+                        if (error) {
+                            console.log(error);
+                            ws.close();
+                        } else {
+                            ws.userId = userId;
+                            clients.add(ws);
+                            console.log(`Подключен пользователь с ID: ${userId}`);
+                        }
+                    });
+                }
+                break;
+            default:
+                // Необязательно, но можно добавить обработку неизвестных типов
+                console.log(`Неизвестный тип сообщения: ${data.type}`);
+                break;
+                }
+        } catch (error) {
+            console.error('Ошибка при парсинге сообщения:', error);
+            ws.close();
         }
     });
 
@@ -831,6 +859,13 @@ function handleNewMessage(data, ws) {
 
     let query = ''
     let params = []
+    let duration = 0
+
+    const duration1 = async (fileUrl) => {
+            if(fileUrl.endsWith('.mp4') || fileUrl.endsWith('.webm') || fileUrl.endsWith('.ogg')) {
+                duration = await getDuration(fileUrl);
+            }
+        }
 
     if(data.content) {
         query = `
@@ -839,6 +874,7 @@ function handleNewMessage(data, ws) {
         `;
         params = [data.conversationId, data.senderId, data.content];
     } else if(data.fileUrl) {
+        duration1(data.fileUrl)
         query = `
             INSERT INTO messages (conversation_id, sender_id, file, sent_at)
             VALUES (?, ?, ?, datetime('now', 'localtime'))
@@ -851,19 +887,34 @@ function handleNewMessage(data, ws) {
             console.error('Ошибка записи сообщения:', err.message);
             ws.send(JSON.stringify({ error: 'Не удалось сохранить сообщение' }));
         } else {
-            const response = {
-                type: 'newMessage',
-                messageId: this.lastID,
-                conversationId: data.conversationId,
-                senderId: data.senderId,
-                content: '',
-                sentAt: new Date().toISOString(),
-                file: {
-                    fileName: data.fileUrl.substring(data.fileUrl.indexOf("-") + 1, data.fileUrl.lastIndexOf('.')),
-                    fileUrl: data.fileUrl,
-                    fileExpansion: data.fileUrl.slice(data.fileUrl.lastIndexOf('.') + 1)
+            let response = {}
+            if(data.fileUrl) {
+                response = {
+                    type: 'newMessage',
+                    messageId: this.lastID,
+                    conversationId: data.conversationId,
+                    senderId: data.senderId,
+                    content: data.content,
+                    sentAt: new Date().toISOString(),
+                    isRead: 0,
+                    file: {
+                        fileName: data.fileUrl.split('/').pop(),
+                        fileUrl: data.fileUrl,
+                        fileExpansion: data.fileUrl.slice(data.fileUrl.lastIndexOf('.') + 1),
+                        duration: duration
+                    }
+                };
+            } else {
+                response = {
+                    type: 'newMessage',
+                    messageId: this.lastID,
+                    conversationId: data.conversationId,
+                    senderId: data.senderId,
+                    content: data.content,
+                    sentAt: new Date().toISOString(),
+                    isRead: 0
                 }
-            };
+            }
 
             console.log(response)
 
@@ -978,84 +1029,52 @@ function handleNewChat(data, ws) {
     });
 }
 
-// Обработка загрузки файлов
-function handleFileUpload(data, ws) {
-    const { conversationId, senderId, fileName, fileContent } = data;
-
-    if (!conversationId || !senderId || !fileName || !fileContent) {
-        ws.send(JSON.stringify({ error: 'Неверный формат данных' }));
+function handleReadingChat(data, ws) {
+    if(!data.conversationId || !data.userId) {
+        ws.send(JSON.stringify({ error: 'Неверный формат' }));
         return;
     }
+    const currentUserId = data.userId;
+    const conversationId = data.conversationId;
 
-    const userFolderName = `user_${senderId}`;
-    const userFolderPath = path.join(uploadsFolder, userFolderName);
+    const updateQuery = `
+            UPDATE messages
+            SET is_read = 1
+            WHERE conversation_id = ?
+            AND sender_id != ?
+            AND is_read = 0;
+        `;
 
-    if (!fs.existsSync(userFolderPath)) {
-        fs.mkdirSync(userFolderPath, { recursive: true });
-    }
-
-    const filePath = path.join(userFolderPath, fileName);
-
-    fs.writeFile(filePath, Buffer.from(fileContent, 'base64'), (err) => {
+    db.run(updateQuery, [conversationId, currentUserId], function (err) {
         if (err) {
-            console.error('Ошибка сохранения файла:', err.message);
-            ws.send(JSON.stringify({ error: 'Ошибка сохранения файла' }));
-            return;
+            console.error('ошибка', err.message);
+        }
+        const response = {
+            type: 'ReadingChat',
+            conversationId: conversationId
         }
 
-        console.log(`Файл сохранен: ${filePath}`);
-
-        const query = `
-            INSERT INTO messages (conversation_id, sender_id, file, sent_at)
-            VALUES (?, ?, ?, datetime('now', 'localtime'))
+        const usersQuery = `
+            SELECT user_id
+            FROM conversation_users
+            WHERE conversation_id = ?
         `;
-        db.run(query, [conversationId, senderId, `user_${senderId}/${fileName}`], function (err) {
+
+        db.all(usersQuery, [conversationId], (err, users) => {
             if (err) {
-                console.error('Ошибка сохранения ссылки на файл в базу:', err.message);
-                ws.send(JSON.stringify({ error: 'Ошибка сохранения данных файла в базу' }));
+                console.error('Ошибка получения пользователей переписки:', err.message);
                 return;
             }
 
-            const messageId = this.lastID;
-            const fileExpansion = fileName ? fileName.split('.').pop() : null;
-
-            const response = {
-                type: 'newMessage',
-                messageId: messageId,
-                conversationId: data.conversationId,
-                senderId: data.senderId,
-                content: '',
-                sentAt: new Date().toISOString(),
-                file: {
-                    fileName: fileName,
-                    fileUrl: `user_${senderId}/${fileName}`,
-                    fileExpansion: fileExpansion
-                }
-            };
-
-            const usersQuery = `
-                SELECT user_id
-                FROM conversation_users
-                WHERE conversation_id = ?
-            `;
-
-            db.all(usersQuery, [data.conversationId], (err, users) => {
-                if (err) {
-                    console.error('Ошибка получения пользователей переписки:', err.message);
-                    return;
-                }
-
-                users.forEach((user) => {
-                    wss.clients.forEach((client) => {
-                        if (client.readyState === WebSocket.OPEN && client.userId === user.user_id) {
-                            client.send(JSON.stringify(response));
-                            console.log(response);
-                        }
-                    });
+            users.forEach((user) => {
+                wss.clients.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN && client.userId === user.user_id) {
+                        client.send(JSON.stringify(response));
+                    }
                 });
             });
         });
-    });
+    })
 }
 
 // Аутентификация WebSocket

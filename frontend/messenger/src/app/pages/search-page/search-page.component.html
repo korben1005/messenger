@@ -1,7 +1,7 @@
 <div class="search-container">
   <h2>Поиск пользователей</h2>
   <div class="search-profiles" >
-    <input class="search-cities" [formControl]="searchControl" placeholder="Введите название города" (blur)="hideDropdown()" (focus)="showDropdown = true">
+    <input class="search-cities" [formControl]="searchControl" placeholder="Введите имя пользователя" (blur)="hideDropdown()" (focus)="showDropdown = true">
     @if (profiles) {
       <ul class="list-cities">
         @for (profile of profiles; track profile.id) {

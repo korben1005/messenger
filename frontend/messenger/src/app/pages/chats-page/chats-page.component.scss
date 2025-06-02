@@ -187,11 +187,52 @@
     }
 }
 
+.fullscreen-wrapper {
+    position: relative; /* По умолчанию */
+}
+
+.fullscreen-wrapper.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: black; /* Чёрный фон для всего экрана */
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Распределяет видео и контролы по высоте */
+}
+
 .video-controls {
   display: flex;
   align-items: center;
   gap: 10px; /* Расстояние между элементами */
   margin-top: 5px; /* Отступ сверху от видео */
+}
+
+.video-controls .video-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 20px;
+    background: #3498db;
+    cursor: pointer;
+}
+
+.video-controls .video-input::-moz-range-thumb {
+    width: 10px;
+    height: 20px;
+    background: #3498db;
+    cursor: pointer;
+}
+
+.video-controls.fullscreen-controls {
+    position: relative;
+    height: 50px;
+    background: black;
+    padding: 15px;
+    border-radius: 5px;
 }
 
 .video-input {
@@ -201,7 +242,18 @@
 
 video {
   max-width: 100%;
+  height: 550px;
   cursor: pointer;
+}
+
+video.fullscreen {
+    position: relative;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: calc(100vh - 50px);
+    background: black; /* Для заполнения фона, если видео не покрывает весь экран */
+    object-fit: contain; /* Сохраняет пропорции видео */
 }
 
 .custom-audio-player {
@@ -221,15 +273,12 @@ video {
 }
 
 .custom-audio-player .audio-progress {
-  flex-grow: 1;
-  height: 10px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: #ddd;
+  flex-grow: 1; /* Ползунок растягивается, занимая доступное пространство */
+  width: 100%;
 }
 
 .custom-audio-player .audio-progress::-webkit-slider-thumb {
-  -webkit-appearance: none;
+ -webkit-appearance: none;
   appearance: none;
   width: 10px;
   height: 20px;

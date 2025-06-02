@@ -97,3 +97,22 @@
     background-color: #0056b3;
   }
 }
+
+.posts-container {
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.post {
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+}
+
+.loading, .no-more-posts {
+    text-align: center;
+    padding: 10px;
+    color: #666;
+}

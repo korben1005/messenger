@@ -58,8 +58,8 @@ export class ChatsService {
     this.socket$.next({ type: 'newMessage', ...message });
   }
 
-  sendFile(file: any) {
-    this.socket$.next({ type: 'fileMessage', ...file})
+  readingChatMes(reading: {conversationId: number, userId: number}) {
+    this.socket$.next({ type: 'readingChat', ...reading});
   }
 
   // Отправка нового сообщения через WebSocket

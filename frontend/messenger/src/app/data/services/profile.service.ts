@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { Profile } from '../interfaces/profile';
 import { tap } from 'rxjs';
+import { Post } from '../interfaces/post';
 
 @Injectable({
   providedIn: 'root'
@@ -11,6 +12,8 @@ export class ProfileService {
   bazeApiUrl = 'https://localhost:3000/'
   me = signal<Profile | null> (null)
   conversationId = signal<number> (0)
+  openCreatePostW = signal<boolean> (false)
+  fileArr = signal<(string | File)[]> ([])
 
   getMe() {
     return this.http.get<Profile>(`${this.bazeApiUrl}account/me`)
@@ -45,5 +48,9 @@ export class ProfileService {
 
   getFiles(){
     return this.http.get<string[]>(`${this.bazeApiUrl}files`)
+  }
+
+  getPosts(offset: number, userId: number) {
+    return this.http.get<Post[]>(`${this.bazeApiUrl}${userId}/posts?offset=${offset}`)
   }
 }

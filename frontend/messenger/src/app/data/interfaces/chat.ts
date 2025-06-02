@@ -4,5 +4,6 @@ export interface Chat {
   username: string,
   avatarUrl: string,
   lastMessage: string,
-  lastMessageTime: string
+  lastMessageTime: string,
+  unreadCount: number
 }
