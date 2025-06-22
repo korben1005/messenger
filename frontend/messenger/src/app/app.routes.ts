@@ -7,13 +7,15 @@ import { ProfilePageComponent } from './pages/profile-page/profile-page.componen
 import { SettingsPageComponent } from './pages/settings-page/settings-page.component';
 import { ChatsPageComponent } from './pages/chats-page/chats-page.component';
 import { SearchPageComponent } from './pages/search-page/search-page.component';
+import { CreatePostComponent } from './common-ui/create-post/create-post.component';
 
 export const routes: Routes = [
   {path: '', component: LayoutComponent, children: [
       {path: '', redirectTo: 'profile/me', pathMatch: 'full'},
       {path: 'profile/:id', component: ProfilePageComponent},
       {path: 'settingsAccount', component: SettingsPageComponent},
-      {path: 'searchProfile', component: SearchPageComponent}
+      {path: 'searchProfile', component: SearchPageComponent},
+      {path: 'create-post', component: CreatePostComponent}
     ],
     canActivate: [loginGuard]
   },

@@ -1,27 +1,27 @@
-<!-- <form class="create-post-window" [formGroup]="post" (ngSubmit)="onSubmit()">
-  <button (click)="closeFileList()">закрыть окно</button>
+<div class="create-post-window">
+  <button class="back-button">
+    <a (click)="goToProfile()">Вернуться на главную</a>
+  </button>
   <textarea
-    formControlName="postContent"
+    [formControl]="content"
     placeholder="Напишите текст поста..."
     class="post-textarea"
     rows="5"
   ></textarea>
-  <input
-      type="file"
-      (change)="onFileSelected($event)"
-      id="fileInput"
-      multiple
-      style="display: none;"
-  />
-  <button class="attach-button" (click)="triggerFileInput()">
-    📎 Прикрепить файл
-  </button>
-  <div class="file-list">
-    @for (item of fileArr; track $index) {
-      <div class="file-item">
-        <input type="checkbox" [id]="'file-' + $index" [value]="item" (change)="onFileSelect($event, item)">
-        <label formControlName="postFiles" [for]="'file-' + $index">{{ item.split('/').pop()?.slice(14) }}</label>
-      </div>
-    }
-  </div>
-</form> -->
+  <button class="attach-button" (click)="openFileList()">Прикрепить файл</button>
+  @if (chatService.fileArr().length > 0) {
+    <div class="selected-files">
+      @for (file of chatService.fileArr(); track $index) {
+        <div class="file-preview">
+          {{ chatService.checkFileArrTypes(file) ? file.split('/').pop()?.slice(14) : file.name }}
+          <button class="remove-button" (click)="chatService.removeFile(file)">❌</button>
+        </div>
+      }
+    </div>
+  }
+  @if (chatService.openFileWindow()) {
+    <div class="overlay"></div>
+    <app-file-selection-page></app-file-selection-page>
+  }
+  <button class="form-button" (click)="o()">Сохранить</button>
+</div>

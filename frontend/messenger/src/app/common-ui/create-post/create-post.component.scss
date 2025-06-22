@@ -1,0 +1,183 @@
+// Переменные для консистентности
+$primary-color: #007bff;
+$secondary-color: #6c757d;
+$border-color: #ccc;
+$breakpoint-mobile: 768px;
+$breakpoint-tablet: 1024px;
+
+.create-post-window {
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+
+  @media (max-width: $breakpoint-mobile) {
+    margin: 10px;
+    padding: 15px;
+    gap: 10px;
+  }
+}
+
+.back-button {
+  align-self: flex-start;
+  padding: 8px 15px;
+  font-size: 14px;
+  color: $primary-color;
+  background: none;
+  border: 1px solid $primary-color;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.3s ease;
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  &:hover {
+    background-color: $primary-color;
+    color: #fff;
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+.post-textarea {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid $border-color;
+  border-radius: 4px;
+  resize: vertical;
+  min-height: 100px;
+  outline: none;
+  transition: border-color 0.3s ease;
+
+  &:focus {
+    border-color: $primary-color;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    font-size: 14px;
+    padding: 8px;
+  }
+}
+
+.attach-button {
+  align-self: flex-start;
+  padding: 8px 15px;
+  font-size: 14px;
+  color: #fff;
+  background-color: $secondary-color;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: darken($secondary-color, 10%);
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+.selected-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+
+  @media (max-width: $breakpoint-mobile) {
+    gap: 5px;
+  }
+}
+
+.file-preview {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  background: #f8f9fa;
+  border: 1px solid $border-color;
+  border-radius: 4px;
+  font-size: 14px;
+
+  @media (max-width: $breakpoint-mobile) {
+    padding: 3px 8px;
+    font-size: 12px;
+  }
+}
+
+.remove-button {
+  margin-left: 10px;
+  padding: 2px 6px;
+  font-size: 14px;
+  color: #fff;
+  background-color: #dc3545;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: darken(#dc3545, 10%);
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    padding: 2px 4px;
+    font-size: 12px;
+  }
+}
+
+.form-button {
+  align-self: flex-end;
+  padding: 10px 20px;
+  font-size: 16px;
+  color: #fff;
+  background-color: $primary-color;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: darken($primary-color, 10%);
+  }
+
+  &:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    padding: 8px 15px;
+    font-size: 14px;
+  }
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 999;
+
+  @media (max-width: $breakpoint-mobile) {
+    backdrop-filter: blur(3px); // Лёгкое размытие на мобильных
+  }
+}

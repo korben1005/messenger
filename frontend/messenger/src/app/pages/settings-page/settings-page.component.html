@@ -2,16 +2,19 @@
   <div class="user-edit-container">
     <h1 class="page-title">Редактирование профиля {{login}}</h1>
     <div class="file-upload-container">
-      <input
-        type="file"
-        (change)="onFileSelected($event)"
-        id="fileInput"
-        style="display: none;"
-      />
-      <img class="avatar" [src]="preview()" alt="">
-      <button class="attach-button" (click)="triggerFileInput()">
-        📎 Прикрепить файл
-      </button>
+      <div class="avatar-edit">
+        <img class="avatar" [src]="preview" alt="">
+        @for (item of chatService.fileArr(); track $index) {
+          {{chatService.checkFileArrTypes(item) ? item.split('/').pop()?.slice(14) : item.name}}
+        }
+        <button class="attach-button" (click)="openFileList()">
+          Прикрепить файл
+        </button>
+        @if (chatService.openFileWindow()) {
+        <div class="overlay"></div>
+        <app-file-selection-page></app-file-selection-page>
+      }
+      </div>
     </div>
     <form class="user-edit-form" [formGroup]="userForm" (ngSubmit)="onSubmit()">
       <div class="form-group">

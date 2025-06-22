@@ -14,7 +14,7 @@ export class FileUrlPipe implements PipeTransform {
     if(!value) return null
     const arr = value.split('/')
     const fileName = arr[1]
-    return `https://localhost:3000/uploads/${arr[0]}/${fileName}`;
+    return `https://localhost:443/data/uploads/${arr[0]}/${fileName}`;
   }
 
 }

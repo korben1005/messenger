@@ -1,12 +1,33 @@
+// Переменные для консистентности
+$primary-color: #007bff;
+$dark-color: #1a1a1a;
+$blue-color: #1d54a8;
+$blue-text-color: #fff;
+$light-gray: #f5f5f5;
+$breakpoint-mobile: 768px;
+$breakpoint-tablet: 1024px;
+$gradient-bg: linear-gradient(135deg, #e0eafc, #cfdef3);
+
 .page-container {
   display: grid;
-  grid-template-columns: 70% 25%;
+  grid-template-columns: 70%;
   justify-content: center;
-  height: 100vh; // Высота страницы
-  background-color: #f5f5f5; // Фон страницы
+  height: max-content;
+  background: $gradient-bg;
   grid-gap: 15px;
+  padding: 10px;
+
+  @media (max-width: $breakpoint-mobile) {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto ;
+  }
+
+  @media (min-width: $breakpoint-mobile) and (max-width: $breakpoint-tablet) {
+    grid-template-columns: 60%;
+  }
 }
-.profile-cont{
+
+.profile-cont {
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -14,66 +35,89 @@
   justify-content: center;
   padding: 20px;
   background: #fff;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
-  margin: auto; // Центрирование в оставшемся месте
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 15px;
+  margin: auto;
   text-align: center;
+
+  @media (max-width: $breakpoint-mobile) {
+    padding: 10px;
+    margin-bottom: 10px;
+  }
 }
 
-.avatar{
-  width: 100px;
-  height: 100px;
+.avatar {
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #ccc;
+  border: 3px solid #ddd;
   margin-bottom: 20px;
+
+  @media (max-width: $breakpoint-mobile) {
+    width: 80px;
+    height: 80px;
+  }
 }
 
-.avatar-placeholder i{
-  font-size: 100px;
-}
-
-.user{
+.user {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-direction: column;
 }
 
-.username{
-  font-size: 24px;
-  font-weight: bold;
-  color: #333;
+.username {
+  font-size: 28px;
+  font-weight: 700;
+  color: #222;
+  margin-bottom: 15px;
+
+  @media (max-width: $breakpoint-mobile) {
+    font-size: 20px;
+  }
+}
+
+.description {
+  font-size: 18px;
+  color: #555;
   margin-bottom: 10px;
+
+  @media (max-width: $breakpoint-mobile) {
+    font-size: 14px;
+  }
 }
 
-.description{
+.city {
   font-size: 16px;
-  color: #666;
-  margin-bottom: 5px;
+  color: #777;
+
+  @media (max-width: $breakpoint-mobile) {
+    font-size: 12px;
+  }
 }
 
-.city{
-  font-size: 14px;
-  color: #999;
-}
-
-.settings-btn{
+.settings-btn {
   margin-top: 20px;
-  padding: 10px 20px;
-  background-color: #007bff;
+  padding: 12px 25px;
+  background: $primary-color;
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.3s ease;
 
   &:hover {
-    background-color: #0056b3;
+    background-color: darken($primary-color, 10%);
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    padding: 8px 16px;
+    font-size: 14px;
   }
 }
 
-.btns-cont{
+.btns-cont {
   width: 100%;
   height: 100vh;
   display: flex;
@@ -81,38 +125,225 @@
   justify-content: center;
   align-items: center;
   gap: 15px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 15px;
+
+  @media (max-width: $breakpoint-mobile) {
+    height: auto;
+    padding: 10px 0;
+    margin-top: 10px;
+  }
 }
 
-.to-message{
+.to-message {
   width: 100%;
-  height: 50px;
-  background-color: #007bff;
+  height: 60px;
+  background: $primary-color;
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.3s ease;
 
-  &:hover{
-    background-color: #0056b3;
+  &:hover {
+    background-color: darken($primary-color, 10%);
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    height: 40px;
+    font-size: 14px;
   }
 }
 
 .posts-container {
-    max-height: 80vh;
-    overflow-y: auto;
-    padding: 10px;
+  height: max-content;
+  padding: 15px;
+  margin-top: 30px;
+  background: #fff;
+  border-radius: 15px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+
+  @media (max-width: $breakpoint-mobile) {
+    margin-top: 15px;
+    padding: 8px;
+  }
 }
 
 .post {
-    border: 1px solid #ccc;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  border: 1px solid #ddd;
+  padding: 15px;
+  margin-bottom: 15px;
+  margin-top: 25px;
+  border-radius: 10px;
+  background: #fafafa;
+  transition: box-shadow 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    margin-top: 10px;
     padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 5px;
+  }
 }
 
-.loading, .no-more-posts {
-    text-align: center;
-    padding: 10px;
-    color: #666;
+.custom-audio-player {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+
+  @media (max-width: $breakpoint-mobile) {
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.fullscreen-wrapper {
+  position: relative;
+  border-radius: 2px;
+
+  &.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: $dark-color;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+}
+
+video {
+  max-width: 100%;
+  height: 300px;
+  cursor: pointer;
+  border-radius: 2px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+  &.fullscreen {
+    width: 100vw;
+    height: calc(100vh - 50px);
+    background: $dark-color;
+    object-fit: contain;
+    border: none;
+    box-shadow: none;
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    height: 200px;
+  }
+}
+
+.video-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 5px;
+  padding: 10px;
+  border-radius: 2px;
+
+  &.fullscreen-controls {
+    position: relative;
+    height: 50px;
+    background: $dark-color;
+    padding: 15px;
+    border-radius: 0;
+    width: 100%;
+    color: white;
+  }
+  .fullscreen{
+    cursor: pointer;
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    align-items: center;
+    gap: 5px;
+    padding: 5px;
+  }
+}
+
+.video-input {
+  flex-grow: 1;
+  width: 100%;
+  accent-color: $blue-color;
+
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 20px;
+    background: $blue-color;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+
+  &::-moz-range-thumb {
+    width: 10px;
+    height: 20px;
+    background: $blue-color;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    margin: 0;
+  }
+}
+
+.toggle-btn {
+  cursor: pointer;
+  background-color: $blue-color;
+  color: $blue-text-color;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 2px;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: darken($blue-color, 10%);
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+}
+
+.loading,
+.no-more-posts {
+  text-align: center;
+  padding: 15px;
+  color: #666;
+
+  @media (max-width: $breakpoint-mobile) {
+    font-size: 14px;
+  }
+}
+
+.create-post {
+  margin-bottom: 15px;
+  padding: 12px 25px;
+  background: $primary-color;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: darken($primary-color, 10%);
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    padding: 8px 16px;
+    font-size: 14px;
+  }
 }

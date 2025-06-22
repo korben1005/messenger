@@ -1,3 +1,5 @@
+import { File } from "./file";
+
 export interface Message {
   conversationId: number,
   messageId: number,
@@ -5,11 +7,5 @@ export interface Message {
   content: string,
   sentAt: string,
   isRead: number,
-  file: {
-    fileName: string,
-    fileUrl: string,
-    fileExpansion: string,
-    duration: number
-    progress?: number;
-  }
+  file: File
 }

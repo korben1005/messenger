@@ -9,10 +9,9 @@ import { Post } from '../interfaces/post';
 })
 export class ProfileService {
   http = inject(HttpClient)
-  bazeApiUrl = 'https://localhost:3000/'
+  bazeApiUrl = 'https://localhost:443/'
   me = signal<Profile | null> (null)
   conversationId = signal<number> (0)
-  openCreatePostW = signal<boolean> (false)
   fileArr = signal<(string | File)[]> ([])
 
   getMe() {
@@ -32,10 +31,8 @@ export class ProfileService {
     return this.http.patch(`${this.bazeApiUrl}account/update`, userSettings)
   }
 
-  upLoadAvatar(file: File) {
-    const fd = new FormData
-    fd.append('image', file)
-    return this.http.patch(`${this.bazeApiUrl}account/update_image`, fd)
+  upLoadAvatar(file: string) {
+    return this.http.patch<any>(`${this.bazeApiUrl}account/update-image`, {file: file})
   }
 
   searchCity(city: string) {
@@ -50,7 +47,11 @@ export class ProfileService {
     return this.http.get<string[]>(`${this.bazeApiUrl}files`)
   }
 
-  getPosts(offset: number, userId: number) {
-    return this.http.get<Post[]>(`${this.bazeApiUrl}${userId}/posts?offset=${offset}`)
+  getPosts(userId: number, offset: number) {
+    return this.http.get<{posts: Post[], total: number}>(`${this.bazeApiUrl}${userId}/posts?offset=${offset}`)
+  }
+
+  loadPost(post: {content: string | null, files: string[] | null}) {
+    return this.http.post(`${this.bazeApiUrl}load-post`, post)
   }
 }

@@ -1,5 +1,5 @@
-import { Component, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, HostListener, inject } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../authentication/auth.service';
 
 @Component({
@@ -10,7 +10,8 @@ import { AuthService } from '../../authentication/auth.service';
   styleUrl: './sidebar.component.scss'
 })
 export class SidebarComponent {
-  authService = inject(AuthService)
+  authService = inject(AuthService);
+  router = inject(Router);
 
   menuItems = [
     {
@@ -28,9 +29,43 @@ export class SidebarComponent {
       icon: 'fa-magnifying-glass',
       link: 'searchProfile'
     }
-  ]
+  ];
+
+  isMobile = false;
+  isSidebarCollapsed = false;
+
+  constructor() {
+    this.checkScreenSize();
+  }
+
+  @HostListener('window:resize', ['$event'])
+  onResize(event: Event) {
+    this.checkScreenSize();
+  }
+
+  checkScreenSize() {
+    this.isMobile = window.innerWidth <= 768;
+    if (this.isMobile && !this.isSidebarCollapsed) {
+      this.isSidebarCollapsed = true; // Сворачиваем по умолчанию на мобильных
+    }
+    console.log(window.innerWidth)
+  }
+
+  toggleSidebar() {
+    this.isSidebarCollapsed = !this.isSidebarCollapsed;
+  }
 
   logout() {
-    this.authService.logout()
+    this.authService.logout();
+    this.router.navigate(['/login']); // Перенаправление после выхода
+  }
+
+  isActive(link: string): boolean {
+    return this.router.isActive(link, {
+      paths: 'exact', // Точное совпадение пути
+      queryParams: 'ignored',
+      fragment: 'ignored',
+      matrixParams: 'ignored'
+    });
   }
 }

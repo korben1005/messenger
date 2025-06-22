@@ -5,9 +5,9 @@
     </a>
     <ul class="chats">
       @for (chat of chats; track chat.conversationId) {
-        <div class="chat-item" (click)="selectChat(chat.conversationId)" [class.selected]="chat.conversationId === selectedChatId">
+        <div class="chat-item" (click)="toggleSidebar(); selectChat(chat.conversationId);" [class.selected]="chat.conversationId === selectedChatId">
           @if(chat.avatarUrl) {
-            <img class="chat-avatar" [src]="[chat.avatarUrl | imgUrl]" alt="">
+            <img class="chat-avatar" [src]="[chat.avatarUrl | fileUrl]" alt="">
           } @else {
             <img class="chat-avatar" src="/additions/user-solid.svg" alt="">
           }
@@ -34,7 +34,7 @@
           @if (item.senderId === profileService.me()!.id) {
             <div class="cont-message">
               @if(profileService.me()!.avatarUrl) {
-                <img class="avatar" [src]="[profileService.me()!.avatarUrl | imgUrl]" alt="">
+                <img class="avatar" [src]="[profileService.me()!.avatarUrl | fileUrl]" alt="">
               } @else {
                 <img class="avatar" src="/additions/user-solid.svg" alt="">
               }
@@ -42,17 +42,23 @@
               @if (item.content) {
                 <span>{{item.content}}</span>
               } @else if (item.file.fileUrl) {
-                  @if (isImageFile(item.file.fileExpansion)) {
+                  @if (chatService.isImageFile(item.file.fileExpansion)) {
                       <a [href]="[item.file.fileUrl | fileUrl]">
                         <img [src]="[item.file.fileUrl | fileUrl]" alt="" loading="lazy">
                       </a>
-                  } @else if (isAudioFile(item.file.fileExpansion)) {
+                  } @else if (chatService.isAudioFile(item.file.fileExpansion)) {
                     <span>{{item.file.fileName.slice(14)}}</span>
                       <div class="custom-audio-player">
                         <audio #audioPlayer preload="metadata">
                           <source [src]="item.file.fileUrl | fileUrl">
                         </audio>
-                        <button (click)="toggleAudio(audioPlayer)">Toggle Audio</button>
+                        <button class="toggle-btn" (click)="chatService.toggleAudio(audioPlayer)">
+                           @if(audioPlayer.paused) {
+                              <i class="fa-solid fa-play"></i>
+                            } @else {
+                              <i class="fa-solid fa-pause"></i>
+                            }
+                        </button>
                         <input
                         type="range"
                         [min]="0"
@@ -60,15 +66,21 @@
                         class="audio-progress"
                         [value]="item.file.progress || 0"
                         (input)="seekAudio(item, $event)" />
-                        <span>{{ formatDuration(item.file.progress || 0) }} / {{ formatDuration(item.file.duration) }}</span>
+                        <span>{{ chatService.formatDuration(item.file.progress || 0) }} / {{ chatService.formatDuration(item.file.duration) }}</span>
                     </div>
-                  } @else if (isVideoFile(item.file.fileExpansion)) {
+                  } @else if (chatService.isVideoFile(item.file.fileExpansion)) {
                       <div class="fullscreen-wrapper">
-                        <video #videoPlayer preload="metadata" (click)="toggleVideo(item, $event)">
+                        <video #videoPlayer preload="metadata" (click)="chatService.toggleVideo(videoPlayer)">
                             <source [src]="item.file.fileUrl | fileUrl" type="video/mp4">
                         </video>
                         <div class="video-controls">
-                            <button (click)="toggleVideo(item, $event)">Toggle Video</button>
+                            <button class="toggle-btn" (click)="chatService.toggleVideo(videoPlayer)">
+                              @if(videoPlayer.paused) {
+                                <i class="fa-solid fa-play"></i>
+                              } @else {
+                                <i class="fa-solid fa-pause"></i>
+                              }
+                            </button>
                             <input
                                 class="video-input"
                                 type="range"
@@ -77,7 +89,7 @@
                                 [value]="item.file.progress || 0"
                                 (input)="seekTo(item, $event)"
                             />
-                            <span>{{ formatDuration(item.file.progress || 0) }} / {{ formatDuration(item.file.duration) }}</span>
+                            <span>{{ chatService.formatDuration(item.file.progress || 0) }} / {{ chatService.formatDuration(item.file.duration) }}</span>
                             <div (click)="toggleFullscreen(item)">
                               @if (fullscreenState[messages.indexOf(item)]) {
                                <i class="fa-solid fa-compress"></i>
@@ -104,7 +116,7 @@
           } @else {
             <div class="cont-message">
               @if(avatarUrl) {
-                <img class="avatar" [src]="[avatarUrl | imgUrl]" alt="">
+                <img class="avatar" [src]="[avatarUrl | fileUrl]" alt="">
               } @else {
                 <img class="avatar" src="/additions/user-solid.svg" alt="">
               }
@@ -112,17 +124,23 @@
                 @if (item.content) {
                   <span>{{item.content}}</span>
                 } @else if (item.file.fileUrl) {
-                    @if (isImageFile(item.file.fileExpansion)) {
+                    @if (chatService.isImageFile(item.file.fileExpansion)) {
                         <a [href]="[item.file.fileUrl | fileUrl]">
                           <img [src]="[item.file.fileUrl | fileUrl]" alt="" loading="lazy">
                         </a>
-                    } @else if (isAudioFile(item.file.fileExpansion)) {
+                    } @else if (chatService.isAudioFile(item.file.fileExpansion)) {
                       <span>{{item.file.fileName.slice(14)}}</span>
                       <div class="custom-audio-player">
                         <audio #audioPlayer preload="metadata">
                           <source [src]="item.file.fileUrl | fileUrl">
                         </audio>
-                        <button (click)="toggleAudio(audioPlayer)">Toggle Audio</button>
+                        <button class="toggle-btn" (click)="chatService.toggleAudio(audioPlayer)">
+                          @if(audioPlayer.paused) {
+                            <i class="fa-solid fa-play"></i>
+                          } @else {
+                            <i class="fa-solid fa-pause"></i>
+                          }
+                        </button>
                         <input
                         type="range"
                         [min]="0"
@@ -130,15 +148,21 @@
                         class="audio-progress"
                         [value]="item.file.progress || 0"
                         (input)="seekAudio(item, $event)" />
-                        <span>{{ formatDuration(item.file.progress || 0) }} / {{ formatDuration(item.file.duration) }}</span>
+                        <span>{{ chatService.formatDuration(item.file.progress || 0) }} / {{ chatService.formatDuration(item.file.duration) }}</span>
                     </div>
-                    } @else if (isVideoFile(item.file.fileExpansion)) {
+                    } @else if (chatService.isVideoFile(item.file.fileExpansion)) {
                       <div class="fullscreen-wrapper">
-                        <video #videoPlayer preload="metadata" (click)="toggleVideo(item, $event)">
+                        <video #videoPlayer preload="metadata" (click)="chatService.toggleVideo(videoPlayer)">
                             <source [src]="item.file.fileUrl | fileUrl" type="video/mp4">
                         </video>
                         <div class="video-controls">
-                            <button (click)="toggleVideo(item, $event)">Toggle Video</button>
+                            <button class="toggle-btn" (click)="chatService.toggleVideo(videoPlayer)">
+                              @if(videoPlayer.paused) {
+                                <i class="fa-solid fa-play"></i>
+                              } @else {
+                                <i class="fa-solid fa-pause"></i>
+                              }
+                            </button>
                             <input
                                 class="video-input"
                                 type="range"
@@ -147,8 +171,16 @@
                                 [value]="item.file.progress || 0"
                                 (input)="seekTo(item, $event)"
                             />
-                            <span>{{ formatDuration(item.file.progress || 0) }} / {{ formatDuration(item.file.duration) }}</span>
-                            <button (click)="toggleFullscreen(item)">Fullscreen</button>
+                            <span>{{ chatService.formatDuration(item.file.progress || 0) }} / {{ chatService.formatDuration(item.file.duration) }}</span>
+                            <button (click)="toggleFullscreen(item)">
+                              <div (click)="toggleFullscreen(item)">
+                              @if (fullscreenState[messages.indexOf(item)]) {
+                               <i class="fa-solid fa-compress"></i>
+                              } @else {
+                                <i class="fa-solid fa-expand"></i>
+                              }
+                            </div>
+                            </button>
                         </div>
                     </div>
                   }
@@ -176,6 +208,13 @@
         [(ngModel)] = "newMessage"
         (keyup.enter)="sendMessage()"
       />
+      <button class="file-upload-container" (click)="openFileList()">
+        <i class="fa-solid fa-paperclip"></i>
+      </button>
+      @if (chatService.openFileWindow()) {
+        <div class="overlay"></div>
+        <app-file-selection-page></app-file-selection-page>
+      }
       <button
       class="send-button"
       (click)="newMessage.trim() ? sendMessage() : sendFiles()"
@@ -183,20 +222,20 @@
       Отправить
       </button>
     </div>
-    <div class="file-upload-container">
+    <!-- <div class="file-upload-container">
       <button (click)="openFileList()">открыть окно</button>
       @if (chatService.openFileWindow()) {
         <div class="overlay"></div>
         <app-file-selection-page></app-file-selection-page>
       }
-    </div>
+    </div> -->
 
     @if (chatService.fileArr().length > 0) {
       <div class="selected-files">
         @for (file of chatService.fileArr(); track $index) {
           <div class="file-preview">
-            {{ checkFileArrTypes(file) ? file.substring(file.indexOf("-") + 1, file.length) : file.name }}
-            <button (click)="removeFile(file)">❌</button>
+            {{ chatService.checkFileArrTypes(file) ? file.split('/').pop()?.slice(14) : file.name }}
+            <button (click)="chatService.removeFile(file)">❌</button>
           </div>
         }
       </div>

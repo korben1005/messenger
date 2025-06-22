@@ -2,7 +2,7 @@
     <div class="profile-cont">
       @if(profile$ | async; as profile) {
         @if(profile.avatarUrl) {
-          <img class="avatar" [src]="[profile.avatarUrl | imgUrl]" alt="">
+          <img class="avatar" [src]="[profile.avatarUrl | fileUrl]" alt="">
         } @else {
           <img class="avatar" src="/additions/user-solid.svg" alt="">
         }
@@ -14,30 +14,92 @@
         @if (route.snapshot.params['id'] === 'me') {
           <button class="settings-btn" (click)="toSettings()">Редактировать</button>
         }
-      }
-    </div>
-    @if (route.snapshot.params['id'] !== 'me') {
+        @else {
       <div class="btns-cont">
         <button class="to-message" (click)="toMessage()">Написать</button>
       </div>
     }
-</div>
-<div class="posts-container">
-  @for (post of posts; track post.id) {
-    <div class="post">
-        <p>{{ post.content }}</p>
-        <small>{{ post.created_at | date:'yyyy-MM-dd HH:mm' }}</small>
+      }
+      <div class="posts-container" (scroll)="onScroll($event)">
+        @if (route.snapshot.params['id'] === 'me') {
+          <button class="create-post" (click)="toCreatepost()">
+            создать пост
+          </button>
+        }
+        @for (post of posts; track post.id) {
+          <div class="post">
+            <small>{{ post.created_at | date:'yyyy-MM-dd HH:mm' }}</small>
+              @for (file of post.files; track $index) {
+                @if (chatService.isVideoFile(file.fileExpansion)) {
+                  <div class="fullscreen-wrapper">
+                  <video #videoElement preload="metadata" (click)="chatService.toggleVideo(videoElement)">
+                      <source [src]="file.fileUrl | fileUrl" type="video/mp4">
+                  </video>
+                  <div class="video-controls">
+                      <button class="toggle-btn" (click)="chatService.toggleVideo(videoElement)">
+                        @if(videoElement.paused) {
+                            <i class="fa-solid fa-play"></i>
+                        } @else {
+                          <i class="fa-solid fa-pause"></i>
+                        }
+                      </button>
+                      <input
+                          class="video-input"
+                          type="range"
+                          [min]="0"
+                          [max]="file.duration"
+                          [value]="file.progress || 0"
+                          (input)="seekVideo(post, file, $event)"
+                      />
+                      <div class="fullscreen" (click)="toggleFullscreen(post, $index)">
+                        @if (fullscreenState[posts.indexOf(post)]) {
+                          <i class="fa-solid fa-compress"></i>
+                        } @else {
+                          <i class="fa-solid fa-expand"></i>
+                        }
+                      </div>
+                      <span>{{ chatService.formatDuration(file.progress || 0) }} / {{ chatService.formatDuration(file.duration) }}</span>
+                  </div>
+                  </div>
+                  }
+                @else if (chatService.isAudioFile(file.fileExpansion)) {
+                  <span>{{file.fileName.slice(14)}}</span>
+                      <div class="custom-audio-player">
+                        <audio #audioElement preload="metadata">
+                          <source [src]="file.fileUrl | fileUrl">
+                        </audio>
+                        <button class="toggle-btn" (click)="chatService.toggleAudio(audioElement)">
+                          @if(audioElement.paused) {
+                            <i class="fa-solid fa-play"></i>
+                          } @else {
+                            <i class="fa-solid fa-pause"></i>
+                          }
+                        </button>
+                        <input
+                        type="range"
+                        [min]="0"
+                        [max]="file.duration"
+                        class="audio-progress"
+                        [value]="file.progress || 0"
+                        (input)="seekAudio(post, file, $event)" />
+                        <span>{{ chatService.formatDuration(file.progress || 0) }} / {{ chatService.formatDuration(file.duration) }}</span>
+                    </div>
+                }
+                @else if (chatService.isImageFile(file.fileExpansion)) {
+                  <img [src]="[file.fileUrl | fileUrl]" alt="" loading="lazy">
+                }
+              }
+              @if (post.content) {
+                <p>Content: {{ post.content }}</p>
+              }
+          </div>
+        }
+        @if (loading) {
+          <div class="loading">Загрузка...</div>
+        } @else if (posts.length == totalPosts) {
+          <div class="no-more-posts">Больше постов нет</div>
+        }
+      </div>
     </div>
-  }
-  @if (loading) {
-    <div class="loading">Загрузка...</div>
-  } @else if (!hasMore && posts.length > 0) {
-    <div class="no-more-posts">Больше постов нет</div>
-  }
-  @if (route.snapshot.params['id'] === 'me') {
-    <button class="create-post" (click)="openCreatePostWindow()"></button>
-    @if(this.profileService.openCreatePostW()) {
-      <app-create-post></app-create-post>
-    }
-  }
 </div>
+

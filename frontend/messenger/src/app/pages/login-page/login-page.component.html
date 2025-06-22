@@ -29,13 +29,13 @@
           autocomplete="current-password"
           required
         />
-        @if (loginForm.get('password')?.hasError('required') && loginForm.get('password')?.touched) {
-          <div class="error-message">Заполните пароль</div>
-        }
         <button type="button" class="password-eye-btn" (click)="isPasswordVisible.set(!isPasswordVisible())"
         [class.active]="isPasswordVisible()">
           <i class="fa-solid fa-eye-slash"></i>
         </button>
+        @if (loginForm.get('password')?.hasError('required') && loginForm.get('password')?.touched) {
+          <div class="error-message">Заполните пароль</div>
+        }
       </div>
 
     <button type="submit" class="submit-btn" [disabled]="loginForm.invalid">Войти</button>

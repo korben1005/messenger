@@ -1,18 +1,24 @@
 <div class="sidebar">
-  <nav class="list-links">
-    <ul class="main-menu">
-      @for (item of menuItems; track item) {
-        <a class="menu-item" [routerLink]="[item.link]">
-          <i class="fa-solid {{item.icon}}"></i>
-          <span>{{item.label}}</span>
-        </a>
-      }
-    </ul>
-  </nav>
-  <footer class="sidebar-footer">
-    <a (click)="logout()" class="menu-item">
-      <i class="fa-solid fa-arrow-right-from-bracket"></i>
-      <span>Выйти</span>
-    </a>
-  </footer>
+  @if (isMobile && isSidebarCollapsed) {
+    <button class="toggle-btn" (click)="toggleSidebar()">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+  } @else {
+    <nav class="list-links" (click)="toggleSidebar()">
+      <ul class="main-menu">
+        @for (item of menuItems; track item) {
+          <a class="menu-item" [routerLink]="[item.link]" [class.active]="isActive(item.link)">
+            <i class="fa-solid {{item.icon}}"></i>
+            <span>{{item.label}}</span>
+          </a>
+        }
+      </ul>
+    </nav>
+    <footer class="sidebar-footer">
+      <a (click)="logout()" class="menu-item">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        <span>Выйти</span>
+      </a>
+    </footer>
+  }
 </div>

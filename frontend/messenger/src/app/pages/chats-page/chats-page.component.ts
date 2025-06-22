@@ -3,7 +3,6 @@ import { RouterLink } from '@angular/router';
 import { ChatsService } from '../../data/services/chats.service';
 import { Message } from '../../data/interfaces/message';
 import { Chat } from '../../data/interfaces/chat';
-import { ImgUrlPipe } from '../../pipes/img-url.pipe';
 import { AuthService } from '../../authentication/auth.service';
 import { ProfileService } from '../../data/services/profile.service';
 import { catchError, of } from 'rxjs';
@@ -15,7 +14,7 @@ import { FileSelectionPageComponent } from '../../common-ui/file-selection-page/
 @Component({
   selector: 'app-chats-page',
   standalone: true,
-  imports: [RouterLink, ImgUrlPipe, FormsModule, DatePipe, FileUrlPipe, FileSelectionPageComponent],
+  imports: [RouterLink, FormsModule, DatePipe, FileUrlPipe, FileSelectionPageComponent],
   templateUrl: './chats-page.component.html',
   styleUrl: './chats-page.component.scss'
 })
@@ -35,6 +34,7 @@ export class ChatsPageComponent implements AfterViewInit {
   audioMessageIndices: number[] = [];
   fullscreenState: { [key: number]: boolean } = {};
   cdr = inject(ChangeDetectorRef);
+  isSidebarVisible: boolean = true;
   @ViewChildren('videoPlayer') videoElements: QueryList<ElementRef<HTMLVideoElement>> | undefined;
   @ViewChild('messagesContainer') messagesContainer: ElementRef<HTMLDivElement> | undefined;
   @ViewChildren('audioPlayer') audioElements: QueryList<ElementRef<HTMLAudioElement>> | undefined;
@@ -74,6 +74,10 @@ export class ChatsPageComponent implements AfterViewInit {
     });
   }
 
+  toggleSidebar() {
+    this.isSidebarVisible = !this.isSidebarVisible;
+  }
+
   filterAndSortChats(chats: Chat[]) {
     if (!Array.isArray(chats)) {
       throw new Error('Аргумент должен быть массивом.');
@@ -103,58 +107,49 @@ export class ChatsPageComponent implements AfterViewInit {
   }
 
   scrollToBottom() {
-      if (this.messagesContainer) {
-        const container = this.messagesContainer.nativeElement;
-        const maxScrollTop = container.scrollHeight - container.clientHeight;
+  if (this.messagesContainer) {
+    const container = this.messagesContainer.nativeElement;
+    // Убеждаемся, что контейнер полностью отрендерен
+    setTimeout(() => {
+      const maxScrollTop = container.scrollHeight - container.clientHeight;
+      if (maxScrollTop >= 0) { // Проверяем, есть ли что прокручивать
         container.scrollTop = maxScrollTop;
-    }
+      }
+    }, 0); // Минимальная задержка для следующего цикла рендеринга
   }
+}
 
   selectChat(conversationId: number) {
     if(this.selectedChatId != conversationId) {
       this.selectedChatId = conversationId;
-    this.avatarUrl = this.chats.find(c => c.conversationId === this.selectedChatId)!.avatarUrl;
-    this.chatService.getMessages(conversationId).pipe(
-      catchError(error => {
-        if (error.status === 404) {
-          this.messages = [];
-        } else {
-          console.error('Произошла ошибка:', error);
+      const chatIndex = this.chats.find(c => c.conversationId === this.selectedChatId)
+      this.avatarUrl = chatIndex!.avatarUrl;
+      this.chatService.getMessages(conversationId).pipe(
+        catchError(error => {
+          if (error.status === 404) {
+            this.messages = [];
+          } else {
+            console.error('Произошла ошибка:', error);
+          }
+          return of([]);
+        })
+      ).subscribe((data) => {
+        this.messages = data.map((msg: Message) => ({
+            ...msg,
+            file: { ...msg.file, progress: msg.file.progress || 0 }
+          }
+        ));
+        this.cdr.detectChanges(); // Принудительное обновление DOM
+        setTimeout(() => this.scrollToBottom(), 0); // Отложенная прокрутка
+        const reading = {
+          conversationId: conversationId,
+          userId: this.profileService.me()!.id
         }
-        return of([]);
-      })
-    ).subscribe((data) => {
-      console.log(data)
-      this.messages = data.map((msg: Message) => ({
-          ...msg,
-          file: { ...msg.file, progress: msg.file.progress || 0 }
+        if(chatIndex!.unreadCount != 0) {
+          this.chatService.readingChatMes(reading)
+          chatIndex!.unreadCount = 0;
         }
-      ));
-      this.messages.forEach(item => {
-        if(this.isAudioFile(item.file.fileExpansion)) {
-          new Promise ((resolve, reject) => {
-            const audio = new Audio();
-            audio.src = `https://localhost:3000/uploads/${item.file.fileUrl}`; // Указываем URL аудиофайла
-            audio.onloadedmetadata = () => {
-                if (!isNaN(audio.duration) && audio.duration !== Infinity) {
-                    item.file.duration = audio.duration // Длительность в секундах
-                } else {
-                    reject(new Error('Не удалось определить длительность аудио'));
-                }
-                audio.remove(); // Очищаем объект после использования
-            };
-          })
-        }
-      })
-      this.cdr.detectChanges(); // Принудительное обновление DOM
-      setTimeout(() => this.scrollToBottom(), 0); // Отложенная прокрутка
-      const reading = {
-        conversationId: conversationId,
-        userId: this.profileService.me()!.id
-      }
-      this.chatService.readingChatMes(reading)
-      this.chats.find(c => c.conversationId === this.selectedChatId)!.unreadCount = 0;
-    });
+      });
     }
   }
 
@@ -170,7 +165,7 @@ export class ChatsPageComponent implements AfterViewInit {
       return;
     }
     this.messages.forEach((msg, idx) => {
-      if (msg.file.fileUrl && this.isVideoFile(msg.file.fileExpansion)) {
+      if (msg.file.fileUrl && this.chatService.isVideoFile(msg.file.fileExpansion)) {
         this.videoMessageIndices.push(idx);
       }
     });
@@ -228,29 +223,6 @@ export class ChatsPageComponent implements AfterViewInit {
     }
   }
 
-  toggleVideo(message: Message, event: Event) {
-    const msgIndex = this.messages.indexOf(message);
-    if (msgIndex === -1) {
-      console.warn('Message not found in this.messages');
-      return;
-    }
-    const videoIndex = this.videoMessageIndices.indexOf(msgIndex);
-    if (videoIndex === -1) {
-      console.warn(`No video element found for message ${msgIndex}`);
-      return;
-    }
-    const video = this.videoElements?.toArray()[videoIndex]?.nativeElement;
-    if (video) {
-      if (video.paused) {
-        video.play()
-      } else {
-        video.pause();
-      }
-    } else {
-      console.warn(`No video element for message ${msgIndex}`);
-    }
-  }
-
   toggleFullscreen(item: Message) {
     const msgIndex = this.messages.indexOf(item);
     const videoIndex = this.videoMessageIndices.indexOf(msgIndex);
@@ -269,21 +241,6 @@ export class ChatsPageComponent implements AfterViewInit {
         }
     }
   }
-
-  formatDuration(duration: number): string {
-    if (!duration || duration < 0 || !isFinite(duration)) return '00:00';
-    const minutes = Math.floor(duration / 60);
-    const seconds = Math.floor(duration % 60);
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  }
-
-  toggleAudio(audio: HTMLAudioElement) {
-      if (audio.paused) {
-        audio.play();
-      } else {
-        audio.pause();
-      }
-    }
 
   seekAudio(message: Message, event: Event) {
     const input = event.target as HTMLInputElement;
@@ -315,13 +272,13 @@ export class ChatsPageComponent implements AfterViewInit {
     const audioArray = this.audioElements!.toArray();
     const audioPromises = this.messages.map((msg, idx) => {
         return new Promise<{ idx: number, duration: number } | null>((resolve, reject) => {
-            if (!msg.file?.fileUrl || !this.isAudioFile(msg.file.fileExpansion)) {
+            if (!msg.file?.fileUrl || !this.chatService.isAudioFile(msg.file.fileExpansion)) {
                 resolve(null); // Пропускаем, если не аудио
                 return;
             }
 
             const audio = new Audio();
-            audio.src = `https://localhost:3000/uploads/${msg.file.fileUrl}`;
+            audio.src = `https://localhost:443/data/uploads/${msg.file.fileUrl}`;
             audio.onloadedmetadata = () => {
                 if (!isNaN(audio.duration) && audio.duration !== Infinity) {
                     msg.file.duration = audio.duration;
@@ -412,7 +369,7 @@ export class ChatsPageComponent implements AfterViewInit {
   handleReadingChat(data: {conversationId: number}){
     if(this.selectedChatId == data.conversationId) {
       this.messages.forEach(item => {
-        if(item.isRead == 0) {
+        if(item.senderId == this.profileService.me()?.id && item.isRead == 0) {
           item.isRead = 1
         }
       })
@@ -435,140 +392,47 @@ export class ChatsPageComponent implements AfterViewInit {
     this.newMessage= ''
   }
 
+  async sendFiles(): Promise<void> {
+    const userId = this.profileService.me()?.id;
+    if (!userId) {
+      alert('Пользователь не авторизован');
+      throw new Error('Пользователь не авторизован');
+    }
+
+    const items = this.chatService.fileArr();
+    for (const item of items) {
+      try {
+        if (this.chatService.checkFileArrTypes(item)) {
+          this.chatService.sendMessage({
+            conversationId: this.selectedChatId!,
+            senderId: userId,
+            fileUrl: item
+          });
+        } else {
+          const data = await this.chatService.sendFiles(item as File);
+          console.log(data)
+          this.chatService.sendMessage({
+            conversationId: this.selectedChatId,
+            senderId: userId,
+            fileUrl: data
+          });
+        }
+      } catch (err) {
+        console.error('Ошибка отправки или загрузки:', err);
+        alert('Ошибка: ' + (err || 'Неизвестная ошибка'));
+        throw err;
+      }
+    }
+
+    this.chatService.fileArr.set([]);
+  }
+
   onEscape() {
     this.selectedChatId = null
     this.chatService.openFileWindow.set(false)
   }
 
-  checkFileArrTypes(item: string | File): item is string {
-    return typeof item === 'string';
-  }
 
-  sendFiles() {
-    if (this.chatService.fileArr().length === 0) {
-      alert('Нет файлов для отправки');
-      return;
-    }
-
-    const filesToProcess = this.chatService.fileArr();
-    console.log(filesToProcess)
-
-    filesToProcess.forEach(item => {
-      if (this.checkFileArrTypes(item)) {
-        this.chatService.sendMessage({
-          conversationId: this.selectedChatId,
-          senderId: this.profileService.me()!.id,
-          fileUrl: item
-        })
-      }
-        else if(item instanceof File ) {
-          const formData = new FormData();
-        const uploadNextFile = (fileIndex: number) => {
-          if (fileIndex >= filesToProcess.length) {
-            this.uploadProgress = 0;
-            alert('Все файлы успешно загружены!');
-            return;
-          }
-
-          const file = filesToProcess[fileIndex] as File;
-          const chunkSize = 1 * 1024 * 1024; // 1MB
-          const totalChunks = Math.ceil(file.size / chunkSize);
-          const fileName = `${Date.now()}-${file.name}`;
-          console.log('Uploading file:', { fileName, fileSize: file.size, totalChunks });
-
-          this.chatService.checkChunks(this.selectedChatId!, fileName).subscribe({
-            next: (response) => {
-              const uploadedChunks = response.uploadedChunks;
-              let chunkIndex = 0;
-
-              const sendNextChunk = () => {
-                if (chunkIndex >= totalChunks) {
-                  this.chatService.completeUpload(this.selectedChatId!, fileName, totalChunks).subscribe({
-                    next: () => {
-                      uploadNextFile(fileIndex + 1);
-                    },
-                    error: (err) => {
-                      console.error('Ошибка завершения загрузки:', err);
-                      this.uploadProgress = 0;
-                      alert('Ошибка завершения загрузки: ' + (err.error?.message || 'Неизвестная ошибка'));
-                    }
-                  });
-                  return;
-                }
-
-                if (uploadedChunks.includes(chunkIndex)) {
-                  chunkIndex++;
-                  this.uploadProgress = Math.round((100 * (chunkIndex + 1)) / totalChunks);
-                  sendNextChunk();
-                  return;
-                }
-
-                const start = chunkIndex * chunkSize;
-                const end = Math.min(start + chunkSize, file.size);
-                const chunk = file.slice(start, end);
-                console.log('Sending chunk:', { chunkIndex, chunkSize: end - start });
-
-                if (!chunk || chunk.size === 0) {
-                  console.error('Chunk is empty or invalid:', { chunkIndex, chunkSize: end - start });
-                  return;
-                }
-
-                formData.set('chunk', chunk, `${fileName}_chunk_${chunkIndex}`);
-                formData.set('fileName', fileName);
-                formData.set('chunkIndex', chunkIndex.toString());
-                formData.set('totalChunks', totalChunks.toString());
-
-                this.chatService.uploadChunk(this.selectedChatId!, formData).subscribe({
-                  next: (res) => {
-                    this.uploadProgress = Math.round((100 * (chunkIndex + 1)) / totalChunks);
-                    chunkIndex++;
-                    sendNextChunk();
-                    console.log(res);
-
-                  },
-                  error: (err) => {
-                    console.error('Ошибка загрузки фрагмента:', err);
-                    this.uploadProgress = 0;
-                    alert('Ошибка загрузки фрагмента: ' + (err.error?.message || 'Неизвестная ошибка'));
-                  }
-                });
-              };
-
-              sendNextChunk();
-            },
-            error: (err) => {
-              console.error('Ошибка проверки фрагментов:', err);
-              alert('Ошибка проверки фрагментов: ' + (err.error?.message || 'Неизвестная ошибка'));
-            }
-          });
-        };
-        uploadNextFile(0);
-      }
-    })
-    this.chatService.fileArr.set([])
-  }
-
-  removeFile(file: string | File) {
-   this.chatService.fileArr.update(files => files.filter(f => f !== file));
-  }
-
-  isImageFile(filePath: string): boolean {
-    const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
-    const fileExtension = filePath
-    return validExtensions.includes(`.${fileExtension}`)
-  }
-
-  isAudioFile(filePath: string): boolean {
-    const validExtensions = ['.mp3', '.wav', '.ogg', '.flac', '.aac', '.m4a', '.wma'];
-    const fileExtension = filePath
-    return validExtensions.includes(`.${fileExtension}`)
-  }
-
-  isVideoFile(filePath: string): boolean {
-    const validExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.flv', '.wmv'];
-    const fileExtension = filePath
-    return validExtensions.includes(`.${fileExtension}`)
-  }
 
   openFileList(){
     this.chatService.openFileWindow.set(true)

@@ -123,3 +123,31 @@
   padding: 8px;
   cursor: pointer;
 }
+
+.avatar-edit{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.attach-button{
+  padding: 12px 25px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.overlay{
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* Полупрозрачный фон */
+  backdrop-filter: blur(5px); /* Размытие */
+  -webkit-backdrop-filter: blur(5px); /* Для совместимости */
+  z-index: 999; /* Под окном, но поверх остального */
+}

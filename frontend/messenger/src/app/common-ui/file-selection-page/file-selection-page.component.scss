@@ -1,10 +1,17 @@
+// Переменные для консистентности
+$primary-color: #007bff;
+$secondary-color: #6c757d;
+$border-color: #ccc;
+$breakpoint-mobile: 768px;
+$breakpoint-tablet: 1024px;
+
 .file-window {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%); /* Центрирование */
   z-index: 1000; /* Поверх оверлея */
-  background-color: white;
+  background-color: #fff;
   border-radius: 8px;
   padding: 20px;
   max-width: 400px;
@@ -12,5 +19,105 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
+  gap: 15px;
+  overflow-y: auto;
+  max-height: 80vh; /* Ограничение высоты для прокрутки */
+
+  @media (max-width: $breakpoint-mobile) {
+    width: 95%;
+    padding: 15px;
+    gap: 10px;
+    max-height: 90vh; /* Более высокое окно на мобильных */
+  }
+
+  @media (min-width: $breakpoint-tablet) {
+    max-width: 500px;
+  }
+}
+
+.close-button {
+  align-self: flex-end;
+  padding: 5px 10px;
+  font-size: 14px;
+  color: #dc3545;
+  background: none;
+  border: 1px solid #dc3545;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: #dc3545;
+    color: #fff;
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+}
+
+.attach-button {
+  align-self: flex-start;
+  padding: 8px 15px;
+  font-size: 14px;
+  color: #fff;
+  background-color: $secondary-color;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: darken($secondary-color, 10%);
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+.file-list {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
+  max-height: 50vh; /* Ограничение для прокрутки списка файлов */
+  overflow-y: auto;
+  padding: 5px 0;
+
+  @media (max-width: $breakpoint-mobile) {
+    gap: 5px;
+    max-height: 40vh; /* Меньше места на мобильных */
+  }
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  background: #f8f9fa;
+  border: 1px solid $border-color;
+  border-radius: 4px;
+
+  input[type="checkbox"] {
+    margin-right: 10px;
+    cursor: pointer;
+  }
+
+  label {
+    font-size: 14px;
+    color: #333;
+    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* Обрезка длинных имён файлов */
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    padding: 3px 8px;
+    label {
+      font-size: 12px;
+    }
+  }
 }

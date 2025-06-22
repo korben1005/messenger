@@ -1,11 +1,12 @@
 <div class="file-window">
-  <button (click)="closeFileList()">закрыть окно</button>
+  <button class="close-button" (click)="closeFileList()">Закрыть окно</button>
   <input
-      type="file"
-      (change)="onFileSelected($event)"
-      id="fileInput"
-      multiple
-      style="display: none;"
+    type="file"
+    (change)="onFileSelected($event)"
+    id="fileInput"
+    multiple
+    style="display: none;"
+    accept="image/*,audio/*,video/*"
   />
   <button class="attach-button" (click)="triggerFileInput()">
     📎 Прикрепить файл

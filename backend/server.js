@@ -9,14 +9,13 @@ const path = require('path');
 const fs = require('fs');
 const https = require('https');
 const WebSocket = require('ws');
-const ffmpeg = require('fluent-ffmpeg'); // Добавляем импорт
 
 const app = express();
-const PORT = 3000;
+const PORT = 443;
 const upload = multer();
 
 // Подключение к базе данных SQLite
-const db = new sqlite3.Database('./messenger.db', (err) => {
+const db = new sqlite3.Database('data/messenger.db', (err) => {
     if (err) console.error('Ошибка подключения к БД:', err.message);
     else {
         console.log('Подключено к SQLite');
@@ -46,8 +45,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-const uploadsFolder = path.join(__dirname, 'Uploads');
-app.use('/uploads', express.static(uploadsFolder));
+const uploadsFolder = path.join(__dirname, '/data/Uploads'); // Абсолютный путь к папке Uploads
+app.use('/data/uploads', express.static(uploadsFolder));
 
 // Логирование запросов
 app.use((req, res, next) => {
@@ -71,7 +70,7 @@ setInterval(() => {
 
 // Функции для генерации токенов
 const generateAccessToken = (user, secret) => {
-    return jwt.sign({ id: user.id, login: user.login }, secret, { expiresIn: '15m' });
+    return jwt.sign({ id: user.id, login: user.login }, secret, { expiresIn: '30m' });
 };
 
 const generateRefreshToken = (user, secret) => {
@@ -274,54 +273,25 @@ app.get('/account/:id', authenticateToken, (req, res) => {
 });
 
 // Обновление аватара
-app.patch('/account/update_image', authenticateToken, (req, res) => {
-    const upload = multer({
-        storage: multer.diskStorage({
-            destination: (req, file, cb) => {
-                const userId = req.userId;
-                if (!userId) {
-                    return cb(new Error('userId отсутствует'), null);
-                }
+app.patch('/account/update-image', authenticateToken, (req, res) => {
+    const userId = req.userId
+    const { file } = req.body
+    
 
-                const userFolderPath = path.join(uploadsFolder, `user_${userId}`);
-                fs.mkdirSync(userFolderPath, { recursive: true });
-                cb(null, userFolderPath);
-            },
-            filename: (req, file, cb) => {
-                const fileExt = path.extname(file.originalname);
-                cb(null, `avatar${fileExt}`);
-            },
-        }),
-    }).single('image');
-
-    upload(req, res, (err) => {
+    const query = `
+        UPDATE aboutUsers
+        SET avatarUrl = ?
+        WHERE id = ?
+    `;
+    db.run(query, [file, userId], function (err) {
         if (err) {
-            console.error('Ошибка загрузки файла:', err.message);
-            return res.status(400).json({ message: 'Ошибка загрузки файла', error: err.message });
+            console.error('Ошибка обновления БД:', err.message);
+            return res.status(500).json({ message: 'Ошибка обновления данных в БД' });
         }
 
-        const userId = req.userId;
-        if (!userId || !req.file) {
-            return res.status(400).json({ message: 'Некорректный запрос или файл не загружен.' });
-        }
-
-        const fileUrl = `/uploads/user_${userId}/${req.file.filename}`;
-
-        const query = `
-            UPDATE aboutUsers
-            SET avatarUrl = ?
-            WHERE id = ?
-        `;
-        db.run(query, [fileUrl, userId], function (err) {
-            if (err) {
-                console.error('Ошибка обновления БД:', err.message);
-                return res.status(500).json({ message: 'Ошибка обновления данных в БД' });
-            }
-
-            res.status(200).json({
-                message: 'Аватар успешно загружен!',
-                avatarUrl: fileUrl,
-            });
+        res.status(200).json({
+            message: 'Аватар успешно загружен!',
+            avatarUrl: file,
         });
     });
 });
@@ -373,6 +343,96 @@ app.patch('/account/cities', (req, res) => {
         res.json(rows);
     });
 });
+
+app.get('/:userId/posts', authenticateToken, (req, res) => {
+    const userId = parseInt(req.params.userId, 10); // Извлекаем userId из URL
+    const offset = parseInt(req.query.offset, 10) || 0; // Извлекаем offset, по умолчанию 0
+    const limit = 10; // Ограничение количества постов на страницу (можно настроить)
+
+    if (isNaN(userId) || isNaN(offset)) {
+        return res.status(400).json({ error: 'Неверные параметры' });
+    }
+    db.all(
+        'SELECT m.post_id, m.user_id, m.content, m.file_links, m.created_at FROM posts m WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
+        [userId, limit, offset],
+        (err, rows) => {
+            if (err) {
+                console.error('Ошибка запроса к базе данных:', err.message);
+                return res.status(500).json({ error: 'Ошибка сервера' });
+            }
+
+            if (!rows || rows.length === 0) {
+                return res.status(404).json({ message: 'Посты не найдены' });
+            }
+
+            db.get('SELECT COUNT(*) as total FROM posts WHERE user_id = ?', [userId], (err, countRow) => {
+                if (err) {
+                    console.error('Ошибка подсчёта постов:', err.message);
+                    return res.status(500).json({ error: 'Ошибка сервера' });
+                }
+
+                const processedPosts = async () => {
+                    const response = await Promise.all(rows.map(async (row) => {
+                        const fileLinks = row.file_links ? row.file_links.split(',').map(link => link.trim()) : [];
+
+                        const files = await Promise.all(fileLinks.map(async (fileUrl) => {
+                            const fileName = fileUrl ? fileUrl.split('/').pop() : null;
+                            const fileExpansion = fileName ? fileName.split('.').pop() : null;
+                            let duration = 1;
+
+                            if (fileUrl && (fileUrl.endsWith('.mp4') || fileUrl.endsWith('.webm') || fileUrl.endsWith('.ogg'))) {
+                                duration = await getDuration(fileUrl);
+                            }
+
+                            duration = Math.floor(duration);
+
+                            return {
+                                fileName: fileName,
+                                fileUrl: fileUrl,
+                                fileExpansion: fileExpansion,
+                                duration: duration
+                            };
+                        }));
+
+                        return {
+                            id: row.post_id,
+                            senderId: row.user_id,
+                            content: row.content,
+                            created_at: row.created_at,
+                            files // Массив файлов для каждого поста
+                        };
+                    }));
+                    res.json({
+                        total: countRow,
+                        posts: response
+                    })
+                }
+                processedPosts() 
+            });
+        }
+    );
+});
+
+app.post('/load-post', authenticateToken, (req, res) => {
+    const userId = req.userId;
+    const {content, files} = req.body
+    console.log(req.body)
+    const sent_at = new Date().toISOString();
+
+    const fileLinks = files.join(',')
+
+    db.run(
+        'INSERT INTO posts (user_id, content, file_links, created_at) VALUES (?, ?, ?, ?)',
+        [userId, content, fileLinks, sent_at],
+        (err) => {
+            if (err) {
+                console.error('Ошибка добавления поста:', err.message);
+                return res.status(500).json({ error: 'Ошибка сервера' });
+            }
+            res.status(201).json({ message: 'Пост успешно добавлен' });
+        }
+    );
+})
 
 // Получение списка чатов
 app.get('/chats', authenticateToken, (req, res) => {
@@ -618,16 +678,15 @@ app.patch('/search-users', authenticateToken, (req, res) => {
 });
 
 // GET /chats/:conversationId/check-chunks — проверка загруженных фрагментов с userId
-app.get('/chats/:conversationId/check-chunks', authenticateToken, (req, res) => {
-    const conversationId = parseInt(req.params.conversationId, 10);
+app.get('/chats/check-chunks', authenticateToken, (req, res) => {
     const userId = req.userId;
     const { fileName } = req.query;
 
-    if (isNaN(conversationId) || !fileName || !userId) {
+    if (!fileName || !userId) {
         return res.status(400).json({ message: 'Некорректные данные' });
     }
 
-    const chunkKey = `${userId}-${conversationId}-${fileName}`;
+    const chunkKey = `${userId}-${fileName}`;
     if (!fileChunks.has(chunkKey)) {
         return res.json({ uploadedChunks: [], userId });
     }
@@ -641,20 +700,19 @@ app.get('/chats/:conversationId/check-chunks', authenticateToken, (req, res) => 
 });
 
 // POST /chats/:conversationId/upload-chunk — отправка фрагментов с userId
-app.post('/chats/:conversationId/upload-chunk', authenticateToken, upload.single('chunk'), (req, res) => {
-    const conversationId = parseInt(req.params.conversationId, 10);
+app.post('/chats/upload-chunk', authenticateToken, upload.single('chunk'), (req, res) => {
     const userId = req.userId;
     const { fileName, chunkIndex, totalChunks } = req.body;
     const chunk = req.file ? req.file.buffer : null;
 
-    console.log('upload-chunk request:', { conversationId, userId, fileName, chunkIndex, totalChunks, chunk: chunk ? 'present' : 'null' });
+    console.log('upload-chunk request:', { userId, fileName, chunkIndex, totalChunks, chunk: chunk ? 'present' : 'null' });
 
-    if (isNaN(conversationId) || !fileName || typeof chunkIndex === 'undefined' || !totalChunks || !chunk || !userId) {
+    if (!fileName || typeof chunkIndex === 'undefined' || !totalChunks || !chunk || !userId) {
         console.log('Bad request details:', { conversationId, userId, fileName, chunkIndex, totalChunks, chunk });
-        return res.status(400).json({ message: 'Некорректные данные', details: { conversationId, userId, fileName, chunkIndex, totalChunks, chunk } });
+        return res.status(400).json({ message: 'Некорректные данные', details: { userId, fileName, chunkIndex, totalChunks, chunk } });
     }
 
-    const chunkKey = `${userId}-${conversationId}-${fileName}`;
+    const chunkKey = `${userId}-${fileName}`;
     if (!fileChunks.has(chunkKey)) {
         fileChunks.set(chunkKey, new Array(parseInt(totalChunks)).fill(null));
     }
@@ -670,18 +728,17 @@ app.post('/chats/:conversationId/upload-chunk', authenticateToken, upload.single
 });
 
 // POST /chats/:conversationId/complete-upload — завершение загрузки с userId
-app.post('/chats/:conversationId/complete-upload', authenticateToken, (req, res) => {
-    const conversationId = parseInt(req.params.conversationId, 10);
+app.post('/chats/complete-upload', authenticateToken, (req, res) => {
     const userId = req.userId;
     const { fileName, totalChunks } = req.body;
     console.log(fileName, totalChunks);
     
 
-    if (isNaN(conversationId) || !fileName || !totalChunks || !userId) {
+    if (!fileName || !totalChunks || !userId) {
         return res.status(400).json({ message: 'Некорректные данные' });
     }
 
-    const chunkKey = `${userId}-${conversationId}-${fileName}`;
+    const chunkKey = `${userId}-${fileName}`;
     if (!fileChunks.has(chunkKey) || fileChunks.get(chunkKey).length !== totalChunks) {
         return res.status(400).json({ message: 'Не все фрагменты получены' });
     }
@@ -705,57 +762,8 @@ app.post('/chats/:conversationId/complete-upload', authenticateToken, (req, res)
         }
 
         const fileUrl = `user_${userId}/${fileName}`;
-        const fileExpansion = path.extname(fileName).slice(1);
 
-        const query = `
-            INSERT INTO messages (conversation_id, sender_id, file, sent_at)
-            VALUES (?, ?, ?, datetime('now', 'localtime'))
-        `;
-        db.run(query, [conversationId, userId, fileUrl], function (err) {
-            if (err) {
-                return res.status(500).json({ message: 'Ошибка сохранения данных файла в базу' });
-            }
-            let duration = 1
-            let response = {}
-
-            const processRows = async () => {
-                if(fileUrl.endsWith('.mp4') || fileUrl.endsWith('.webm') || fileUrl.endsWith('.ogg')) {
-                    duration = await getDuration(fileUrl);
-                }
-                const messageId = this.lastID;
-                response = {
-                    type: 'newMessage',
-                    messageId: messageId,
-                    conversationId: conversationId,
-                    senderId: userId,
-                    content: '',
-                    sentAt: new Date().toISOString(),
-                    file: {
-                        fileName: fileName,
-                        fileUrl: fileUrl,
-                        fileExpansion: fileExpansion,
-                        duration: duration
-                    }
-                }
-            }
-            processRows()
-
-            const usersQuery = `
-                SELECT user_id
-                FROM conversation_users
-                WHERE conversation_id = ?
-            `;
-            db.all(usersQuery, [conversationId], (err, users) => {
-                if (err) return;
-                users.forEach((user) => {
-                    wss.clients.forEach((client) => {
-                        if (client.readyState === WebSocket.OPEN && client.userId === user.user_id) {
-                            client.send(JSON.stringify(response));
-                        }
-                    });
-                });
-            });
-        });
+        res.status(200).json(fileUrl);
     });
 });
 
@@ -860,6 +868,7 @@ function handleNewMessage(data, ws) {
     let query = ''
     let params = []
     let duration = 0
+    const sent_at = new Date().toISOString();
 
     const duration1 = async (fileUrl) => {
             if(fileUrl.endsWith('.mp4') || fileUrl.endsWith('.webm') || fileUrl.endsWith('.ogg')) {
@@ -870,16 +879,17 @@ function handleNewMessage(data, ws) {
     if(data.content) {
         query = `
             INSERT INTO messages (conversation_id, sender_id, content, sent_at)
-            VALUES (?, ?, ?, datetime('now', 'localtime'))
+            VALUES (?, ?, ?, ?)
         `;
-        params = [data.conversationId, data.senderId, data.content];
+        params = [data.conversationId, data.senderId, data.content, sent_at];
     } else if(data.fileUrl) {
         duration1(data.fileUrl)
+        console.log(duration)
         query = `
             INSERT INTO messages (conversation_id, sender_id, file, sent_at)
-            VALUES (?, ?, ?, datetime('now', 'localtime'))
+            VALUES (?, ?, ?, ?)
         `;
-        params = [data.conversationId, data.senderId, data.fileUrl];
+        params = [data.conversationId, data.senderId, data.fileUrl, sent_at];
     }
 
     db.run(query, params, function (err) {
@@ -895,13 +905,13 @@ function handleNewMessage(data, ws) {
                     conversationId: data.conversationId,
                     senderId: data.senderId,
                     content: data.content,
-                    sentAt: new Date().toISOString(),
+                    sentAt: sent_at,
                     isRead: 0,
                     file: {
                         fileName: data.fileUrl.split('/').pop(),
                         fileUrl: data.fileUrl,
                         fileExpansion: data.fileUrl.slice(data.fileUrl.lastIndexOf('.') + 1),
-                        duration: duration
+                        duration: Math.floor(duration)
                     }
                 };
             } else {
@@ -911,7 +921,7 @@ function handleNewMessage(data, ws) {
                     conversationId: data.conversationId,
                     senderId: data.senderId,
                     content: data.content,
-                    sentAt: new Date().toISOString(),
+                    sentAt: sent_at,
                     isRead: 0
                 }
             }
@@ -1068,7 +1078,7 @@ function handleReadingChat(data, ws) {
 
             users.forEach((user) => {
                 wss.clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN && client.userId === user.user_id) {
+                    if (client.readyState === WebSocket.OPEN && client.userId === user.user_id && user.user_id !== currentUserId) {
                         client.send(JSON.stringify(response));
                     }
                 });

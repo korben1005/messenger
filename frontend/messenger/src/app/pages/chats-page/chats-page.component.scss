@@ -1,27 +1,39 @@
-:host{
+:host {
   display: grid;
   grid-template-columns: 300px 1fr;
   height: 100dvh;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr; // На мобильных только одна колонка
+    grid-template-rows: auto 1fr; // Sidebar сверху, messages внизу
+  }
 }
 
-.sidebar{
+.sidebar {
   width: 100%;
   height: 100dvh;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 12px 0;
   background: var(--dark-color);
+
+  @media (max-width: 768px) {
+    height: auto; // Адаптивная высота на мобильных
+  }
 }
 
-.list-chats{
+.list-chats {
   display: grid;
   grid-gap: 8px;
   list-style: none;
   width: 100%;
+
+  @media (max-width: 768px) {
+    grid-gap: 4px;
+  }
 }
 
-.to-profile{
+.to-profile {
   width: 100%;
   padding: 16px 12px;
   cursor: pointer;
@@ -39,15 +51,26 @@
 
   &.active,
   &:hover,
-  &:focus-visible{
-      background: var(--blue-color);
-      color: var( --blue-text-color)
+  &:focus-visible {
+    background: var(--blue-color);
+    color: var(--blue-text-color);
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px 8px;
+    font-size: 16px;
+    grid-gap: 15px;
   }
 }
 
-.chats{
+.chats {
   overflow-y: auto;
+
+  @media (max-width: 768px) {
+    max-height: 200px; // Ограничение высоты на мобильных
+  }
 }
+
 .chat-item {
   display: flex;
   align-items: center;
@@ -55,10 +78,16 @@
   border-bottom: 1px solid #e0e0e0;
   gap: 15px;
   padding: 10px;
+
+  @media (max-width: 768px) {
+    height: 50px;
+    padding: 5px;
+    gap: 10px;
+  }
 }
 
 .chat-item.selected {
-  background-color: #1d54a8; /* Цвет для выбранного чата */
+  background-color: #1d54a8;
 }
 
 .chat-item:hover {
@@ -71,6 +100,11 @@
   height: 40px;
   border-radius: 50%;
   background-color: white;
+
+  @media (max-width: 768px) {
+    width: 30px;
+    height: 30px;
+  }
 }
 
 .chat-info {
@@ -83,14 +117,22 @@
   font-weight: 600;
   color: white;
   margin-bottom: 5px;
+
+  @media (max-width: 768px) {
+    font-size: 14px;
+  }
 }
 
 .chat-info .chat-time {
   font-size: 14px;
   color: white;
+
+  @media (max-width: 768px) {
+    font-size: 12px;
+  }
 }
 
-.delete-chat{
+.delete-chat {
   background-color: #ff4d4d;
   color: white;
   border: none;
@@ -100,21 +142,35 @@
   font-size: 14px;
   margin-left: 10px;
 
-    img{
-      width: 20px;
-      height: 20px;
-    }
+  img {
+    width: 20px;
+    height: 20px;
+  }
 
-    &:hover {
-      background-color: #ff0000;
+  &:hover {
+    background-color: #ff0000;
+  }
+
+  @media (max-width: 768px) {
+    padding: 3px 8px;
+    font-size: 12px;
+    img {
+      width: 15px;
+      height: 15px;
     }
+  }
 }
 
-.messages{
+.messages {
   display: flex;
   height: 100dvh;
   flex-direction: column;
   justify-content: end;
+
+  @media (max-width: 768px) {
+    height: auto; // Адаптивная высота
+    padding: 10px;
+  }
 }
 
 .chat-container {
@@ -128,9 +184,16 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   gap: 10px;
   padding: 10px;
+
+  @media (max-width: 768px) {
+    padding: 5px;
+    gap: 5px;
+    flex-grow: 1; // Занимает всё доступное пространство
+    min-height: 0; // Убираем минимальную высоту
+  }
 }
 
-.message{
+.message {
   display: inline-block;
   max-width: 70%;
   padding: 10px 15px;
@@ -138,26 +201,42 @@
   font-size: 14px;
   line-height: 1.4;
 
-  img{
+  img {
     width: 300px;
     height: 300px;
+
+    @media (max-width: 768px) {
+      width: 200px;
+      height: 200px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    max-width: 90%;
+    padding: 8px 10px;
+    font-size: 12px;
   }
 }
 
-.avatar{
+.avatar {
   width: 30px;
   height: 30px;
   border-radius: 50%;
+
+  @media (max-width: 768px) {
+    width: 25px;
+    height: 25px;
+  }
 }
 
-.cont-message{
+.cont-message {
   display: flex;
   align-items: center;
   gap: 15px;
-}
 
-.avatar-placeholder i{
-  font-size: 30px;
+  @media (max-width: 768px) {
+    gap: 10px;
+  }
 }
 
 .message.user {
@@ -166,94 +245,142 @@
   color: #fff;
   border-bottom-left-radius: 0;
   font-size: 15px;
+
+  @media (max-width: 768px) {
+    font-size: 13px;
+  }
 }
 
-.message.other-user{
+.message.other-user {
   align-self: flex-start;
   background-color: #dfd2d2;
   color: #333;
   border-bottom-left-radius: 0;
+
+  @media (max-width: 768px) {
+    font-size: 13px;
+  }
 }
 
-.file_download{
+.file_download {
   display: flex;
   align-items: center;
   justify-content: center;
   text-decoration: none;
 
-    img{
-      width: 50px;
-      height: 50px;
+  img {
+    width: 50px;
+    height: 50px;
+
+    @media (max-width: 768px) {
+      width: 40px;
+      height: 40px;
     }
+  }
 }
 
 .fullscreen-wrapper {
-    position: relative; /* По умолчанию */
+  position: relative;
+
+  @media (max-width: 768px) {
+    video {
+      height: 300px; // Уменьшаем высоту видео на мобильных
+    }
+  }
 }
 
 .fullscreen-wrapper.fullscreen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: black; /* Чёрный фон для всего экрана */
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between; /* Распределяет видео и контролы по высоте */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: black;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.toggle-btn {
+  cursor: pointer;
+  background-color: #3498db;
+  color: white;
+  border: none;
+
+  @media (max-width: 768px) {
+    padding: 3px 8px;
+    font-size: 12px;
+  }
 }
 
 .video-controls {
   display: flex;
   align-items: center;
-  gap: 10px; /* Расстояние между элементами */
-  margin-top: 5px; /* Отступ сверху от видео */
+  gap: 10px;
+  margin-top: 5px;
+
+  @media (max-width: 768px) {
+    gap: 5px;
+  }
 }
 
 .video-controls .video-input::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 10px;
-    height: 20px;
-    background: #3498db;
-    cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 20px;
+  background: #3498db;
+  cursor: pointer;
 }
 
 .video-controls .video-input::-moz-range-thumb {
-    width: 10px;
-    height: 20px;
-    background: #3498db;
-    cursor: pointer;
+  width: 10px;
+  height: 20px;
+  background: #3498db;
+  cursor: pointer;
 }
 
 .video-controls.fullscreen-controls {
-    position: relative;
-    height: 50px;
-    background: black;
-    padding: 15px;
-    border-radius: 5px;
+  position: relative;
+  height: 50px;
+  background: black;
+  padding: 15px;
+  border-radius: 5px;
+
+  @media (max-width: 768px) {
+    height: 40px;
+    padding: 10px;
+  }
 }
 
 .video-input {
-  flex-grow: 1; /* Ползунок растягивается, занимая доступное пространство */
-  width: 100%; /* Убедитесь, что ползунок занимает место */
+  flex-grow: 1;
+  width: 100%;
+
+  @media (max-width: 768px) {
+    width: 80%;
+  }
 }
 
 video {
   max-width: 100%;
   height: 550px;
   cursor: pointer;
+
+  @media (max-width: 768px) {
+    height: 300px;
+  }
 }
 
 video.fullscreen {
-    position: relative;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: calc(100vh - 50px);
-    background: black; /* Для заполнения фона, если видео не покрывает весь экран */
-    object-fit: contain; /* Сохраняет пропорции видео */
+  position: relative;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: calc(100vh - 50px);
+  background: black;
+  object-fit: contain;
 }
 
 .custom-audio-player {
@@ -261,6 +388,11 @@ video.fullscreen {
   align-items: center;
   gap: 10px;
   width: 300px;
+
+  @media (max-width: 768px) {
+    width: 200px;
+    gap: 5px;
+  }
 }
 
 .custom-audio-player button {
@@ -270,15 +402,23 @@ video.fullscreen {
   border: none;
   border-radius: 3px;
   cursor: pointer;
+
+  @media (max-width: 768px) {
+    padding: 3px 8px;
+  }
 }
 
 .custom-audio-player .audio-progress {
-  flex-grow: 1; /* Ползунок растягивается, занимая доступное пространство */
+  flex-grow: 1;
   width: 100%;
+
+  @media (max-width: 768px) {
+    width: 80%;
+  }
 }
 
 .custom-audio-player .audio-progress::-webkit-slider-thumb {
- -webkit-appearance: none;
+  -webkit-appearance: none;
   appearance: none;
   width: 10px;
   height: 20px;
@@ -299,6 +439,12 @@ video.fullscreen {
   padding: 10px;
   background-color: #f9f9f9;
   border-top: 1px solid #ddd;
+  gap: 10px;
+
+  @media (max-width: 768px) {
+    padding: 5px;
+    gap: 5px;
+  }
 
   .message-input {
     flex: 1;
@@ -312,10 +458,14 @@ video.fullscreen {
     &:focus {
       border-color: #007bff;
     }
+
+    @media (max-width: 768px) {
+      padding: 8px;
+      font-size: 12px;
+    }
   }
 
   .send-button {
-    margin-left: 10px;
     padding: 10px 15px;
     font-size: 14px;
     color: #fff;
@@ -337,6 +487,24 @@ video.fullscreen {
       background-color: #ccc;
       cursor: not-allowed;
     }
+
+    @media (max-width: 768px) {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+  }
+}
+
+.file-upload-container {
+  border: none;
+  cursor: pointer;
+
+  i {
+    font-size: 20px;
+
+    @media (max-width: 768px) {
+      font-size: 16px;
+    }
   }
 }
 
@@ -346,10 +514,12 @@ video.fullscreen {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5); /* Полупрозрачный фон */
-  backdrop-filter: blur(5px); /* Размытие */
-  -webkit-backdrop-filter: blur(5px); /* Для совместимости */
-  z-index: 999; /* Под окном, но поверх остального */
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 999;
+
+  @media (max-width: 768px) {
+    backdrop-filter: blur(3px); // Лёгкое размытие на мобильных
+  }
 }
-
-

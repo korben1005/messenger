@@ -1,26 +1,132 @@
-.list-cities{
-  display: flex;
-  gap: 10px;
+// Переменные для консистентности
+$primary-color: #007bff;
+$border-color: #ccc;
+$breakpoint-mobile: 768px;
+$breakpoint-tablet: 1024px;
+
+.search-container {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
+  h2 {
+    font-size: 24px;
+    color: #333;
+    margin-bottom: 15px;
+    text-align: center;
+
+    @media (max-width: $breakpoint-mobile) {
+      font-size: 20px;
+    }
+  }
 }
 
-.profile{
-  width: 500px;
+.search-profiles {
+  position: relative;
+}
+
+.search-cities {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid $border-color;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.3s ease;
+
+  &:focus {
+    border-color: $primary-color;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    font-size: 14px;
+    padding: 8px;
+  }
+}
+
+.list-cities {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid $border-color;
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-in;
+
+  @media (max-width: $breakpoint-mobile) {
+    max-height: 200px;
+  }
+}
+
+.profile {
+  width: 100%;
   height: 100px;
   display: flex;
   gap: 15px;
-  border-bottom: black 1px solid;
+  padding: 10px;
+  border-bottom: 1px solid $border-color;
   align-items: center;
   text-decoration: none;
-  color: black;
+  color: #333;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: #f5f5f5;
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    height: 80px;
+    padding: 8px;
+  }
+
+  @media (max-width: $breakpoint-tablet) {
+    width: 100%;
+  }
 }
 
-.avatar{
+.avatar {
   width: 70px;
   height: 70px;
   border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #ddd;
+
+  @media (max-width: $breakpoint-mobile) {
+    width: 50px;
+    height: 50px;
+  }
 }
 
-.list-cities{
-  display: flex;
-  flex-direction: column;
+span {
+  font-size: 18px;
+  font-weight: 500;
+
+  @media (max-width: $breakpoint-mobile) {
+    font-size: 16px;
+  }
+}
+
+// Анимация для выпадающего списка
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
